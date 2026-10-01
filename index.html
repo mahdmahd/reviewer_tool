@@ -1,0 +1,1740 @@
+<!doctype html>
+<html lang="en" data-grid="on">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iAIMS Reviewing tool</title>
+<meta name="description" content="A working instrument for reviewing healthcare-AI papers. Line-anchored notes, a two-read triage, an appraisal table, and a submittable report." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="assets/iaims-icon-apple.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Geist:wght@300..700&family=Geist+Mono:wght@300..600&display=swap" rel="stylesheet">
+<script data-goatcounter="https://iaimsreviewtool2026.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<style>
+/* ============================================================
+   iAIMS Reviewing tool — construction-grid world
+   Measure first. The lattice is the instrument.
+   ============================================================ */
+:root{
+  /* ink and paper — light chosen for the scene: a lit desk, daytime,
+     a printed manuscript beside the screen */
+  --paper:#F4F4F1;
+  --paper-2:#EBEBE6;
+  --card:#FAFAF7;
+  --ink:#14171A;
+  --ink-2:#43474C;
+  --ink-3:#6B7075;
+  --rule:#D3D6D0;
+  --hair:#E3E5E0;
+  --rule-strong:#14171A;
+
+  /* the committed plane. Structure only. */
+  --ultra:#1B2FD0;
+  --ultra-ink:#0E1A80;
+  --ultra-wash:#E8EAFB;
+
+  /* signal. Severity and nothing else. Never alone. */
+  --major:#C8361F;
+  --major-wash:#FBEDEA;
+  --minor:#9A6B00;
+  --minor-wash:#FBF3E0;
+  --ai:#5B3E9B;
+  --ok:#1F6B45;
+
+  --f-display:'Anybody',ui-sans-serif,system-ui,sans-serif;
+  --f-text:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --f-mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,monospace;
+
+  --mod:28px;                     /* the construction module */
+  --gut:clamp(16px,3.2vw,40px);
+  --maxw:1460px;
+  --rail:132px;
+
+  --t-fast:120ms;
+  --t:220ms;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-text);font-size:15.5px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-synthesis-weight:none;
+  caret-color:var(--ultra);
+}
+/* --- the armature: always drawn, toggleable as a real state --- */
+.lattice{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(to right,var(--hair) 0 1px,transparent 1px var(--mod)),
+    repeating-linear-gradient(to bottom,var(--hair) 0 1px,transparent 1px var(--mod));
+  opacity:.6;transition:opacity var(--t) var(--ease);
+}
+html[data-grid="off"] .lattice{opacity:0}
+
+/* --- browser surfaces, themed from the palette --- */
+::selection{background:var(--ultra);color:#fff}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--paper-2)}
+::-webkit-scrollbar-thumb{background:var(--rule);border:3px solid var(--paper-2)}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+*{scrollbar-color:var(--rule) var(--paper-2);scrollbar-width:thin}
+:focus-visible{outline:2px solid var(--ultra);outline-offset:2px}
+a{color:var(--ultra-ink);text-underline-offset:3px;text-decoration-thickness:1px}
+
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin-inline:auto;padding-inline:var(--gut)}
+.skip{position:absolute;left:var(--gut);top:-80px;z-index:80;background:var(--ink);color:var(--paper);padding:12px 18px;font-family:var(--f-mono);font-size:13px}
+.skip:focus{top:8px}
+
+/* ============================ masthead ============================ */
+.masthead{border-bottom:1px solid var(--rule-strong);padding-top:22px}
+.masthead .wrap{display:flex;align-items:flex-end;gap:clamp(16px,3vw,40px);flex-wrap:wrap;padding-bottom:14px}
+.brand{display:flex;align-items:center;gap:13px;flex:none}
+.brand-logo{width:58px;height:58px;flex:none;display:block;object-fit:contain}
+.brand-name{font-family:var(--f-display);font-size:26px;font-weight:800;font-variation-settings:'wdth' 112;letter-spacing:-.02em;line-height:.9}
+.brand-sub{font-family:var(--f-text);font-size:11px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-top:3px}
+
+.msfield{flex:1 1 380px;min-width:240px;display:flex;flex-direction:column;gap:6px}
+.msfield label{font-family:var(--f-text);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+.msfield input{
+  font-family:var(--f-text);font-size:19px;font-weight:600;color:var(--ink);
+  background:transparent;border:0;border-bottom:2px solid var(--rule-strong);
+  padding:6px 0 7px;width:100%;transition:border-color var(--t-fast) linear;
+}
+.msfield input::placeholder{color:var(--ink-3);font-weight:400;font-size:15.5px}
+.msfield input:focus{outline:0;border-bottom-color:var(--ultra)}
+
+.savestate{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);display:flex;align-items:center;gap:7px;padding-bottom:4px;white-space:nowrap}
+.savestate .dot{width:6px;height:6px;background:var(--ok);flex:none}
+
+/* --- the reading: counters as measurement figures --- */
+.reading{
+  border-bottom:1px solid var(--rule);
+  background:var(--paper);
+}
+.reading .wrap{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;padding-block:6px 2px}
+.counter{
+  display:flex;align-items:baseline;gap:9px;
+  padding:12px 20px 12px 0;margin-right:20px;
+  border-right:1px solid var(--rule);flex:none;
+}
+.counter:last-of-type{border-right:0}
+.counter .n{
+  font-family:var(--f-mono);font-variant-numeric:tabular-nums;
+  font-size:23px;font-weight:600;line-height:1;letter-spacing:-.02em;
+}
+.counter .l{font-family:var(--f-mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.counter[data-sig="major"] .n{color:var(--major)}
+.counter[data-sig="minor"] .n{color:var(--minor)}
+.counter.is-zero .n{color:var(--ink-3)}
+.reading .spacer{flex:1 1 auto;min-width:8px}
+.reading .tools{display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding-block:6px}
+.reading .tools button{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;
+  background:transparent;border:0;color:var(--ink-2);padding:9px 11px;cursor:pointer;
+  transition:color var(--t-fast) linear,background var(--t-fast) linear;
+}
+.reading .tools button:hover{background:var(--paper-2);color:var(--ink)}
+.reading .tools button[aria-pressed="true"]{background:var(--ultra);color:#fff}
+
+/* ============================ armature ============================ */
+.armature{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:0;align-items:start;padding-block:0}
+
+.rail{position:sticky;top:0;border-right:1px solid var(--rule);padding-block:20px 200px;min-height:60vh}
+.rail-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.rail-list li{position:relative}
+.rail-btn{
+  display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:11px;
+  width:100%;background:transparent;border:0;cursor:pointer;text-align:left;
+  padding:0 14px 0 0;margin-bottom:2px;color:var(--ink-2);
+  transition:color var(--t-fast) linear;
+}
+.rail-num{
+  width:40px;height:40px;display:grid;place-items:center;flex:none;
+  font-family:var(--f-mono);font-size:13px;font-weight:500;
+  border:1px solid var(--rule);background:var(--card);color:var(--ink-3);
+  transition:background var(--t-fast) linear,color var(--t-fast) linear,border-color var(--t-fast) linear;
+}
+.rail-lab{font-size:12.5px;font-weight:500;letter-spacing:-.005em;line-height:1.2;padding-block:6px}
+.rail-btn:hover{color:var(--ink)}
+.rail-btn:hover .rail-num{border-color:var(--ink-3)}
+.rail-btn[aria-current="true"]{color:var(--ink);font-weight:600}
+.rail-btn[aria-current="true"] .rail-num{background:var(--ultra);border-color:var(--ultra);color:#fff}
+.rail-btn[aria-current="true"] .rail-lab{font-weight:600}
+.rail-btn.is-done .rail-num{border-color:var(--ink);color:var(--ink)}
+.rail-opt{font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;color:var(--ink-3);text-transform:uppercase;display:block;margin-top:2px}
+.rail-foot{position:absolute;bottom:20px;left:0;right:14px}
+.rail-foot button{
+  width:100%;font-family:var(--f-text);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+  background:transparent;border:1px solid var(--rule);color:var(--ink-3);padding:9px;cursor:pointer;
+  transition:all var(--t-fast) linear;
+}
+.rail-foot button:hover{border-color:var(--ink);color:var(--ink)}
+.rail-foot button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.field{padding:clamp(18px,2.6vw,32px) clamp(16px,3vw,40px) 80px;min-width:0}
+
+/* --- field head: monument numeral + title --- */
+.head{display:flex;align-items:flex-start;gap:clamp(14px,2.4vw,30px);border-bottom:1px solid var(--rule-strong);padding-bottom:16px;margin-bottom:26px;flex-wrap:wrap}
+.head-num{
+  font-family:var(--f-display);font-size:clamp(58px,8.6vw,96px);font-weight:800;line-height:.76;
+  font-variation-settings:'wdth' 68;letter-spacing:0;color:var(--ink);flex:none;
+}
+.head-txt{flex:1 1 300px;min-width:0;padding-top:6px}
+.head-title{font-family:var(--f-display);font-size:clamp(21px,2.5vw,29px);font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.025em;line-height:1.08;margin:0 0 7px}
+.head-desc{margin:0;color:var(--ink-2);max-width:66ch;font-size:14.5px}
+
+/* --- the note, one schema, everywhere --- */
+.note{
+  background:var(--card);border:0;border-bottom:1px solid var(--rule);
+  padding:11px 0 11px 0;display:grid;grid-template-columns:106px minmax(0,1fr);gap:0;
+  transition:background var(--t-fast) linear;
+}
+.note:first-child{border-top:1px solid var(--rule)}
+.note-schema{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;color:var(--ink-3);
+  border-right:1px solid var(--hair);padding:3px 12px 3px 11px;display:flex;flex-direction:column;gap:5px;
+}
+.note-line{font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.note-sec{text-transform:uppercase;letter-spacing:.03em;font-size:9.5px;line-height:1.35}
+.note-body{padding-left:14px;min-width:0}
+.note-text{margin:0;font-size:15px;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.note-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px}
+.sevtag{
+  font-family:var(--f-mono);font-weight:700;font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  padding:2px 6px;border:1px solid currentColor;text-transform:uppercase;
+}
+.sevtag[data-s="major"]{color:#fff;background:var(--major);border-color:var(--major)}
+.sevtag[data-s="minor"]{color:#fff;background:var(--minor);border-color:var(--minor)}
+.sevtag[data-s="none"]{color:var(--ink-3);background:transparent}
+.note.n-major{background:var(--major-wash)}
+.note.n-minor{background:var(--minor-wash)}
+.note.is-rejected{opacity:.5}
+.note.is-rejected .note-text{text-decoration:line-through;text-decoration-color:var(--minor);text-decoration-thickness:2px}
+.tagset{display:flex;gap:4px;flex-wrap:wrap}
+.tagset .tag{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.03em;
+  border:1px solid var(--rule);background:transparent;color:var(--ink-2);
+  padding:3px 7px;cursor:pointer;transition:all var(--t-fast) linear;
+}
+.tagset .tag:hover{border-color:var(--ink-3)}
+.tagset .tag[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.note-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.mark{
+  font-family:var(--f-text);font-size:12px;font-weight:500;letter-spacing:.01em;text-transform:uppercase;
+  background:transparent;border:1px solid var(--rule);color:var(--ink-2);
+  padding:5px 9px;cursor:pointer;transition:all var(--t-fast) linear;
+}
+.mark:hover{border-color:var(--ink);color:var(--ink)}
+.mark[aria-pressed="true"]{background:var(--ultra);border-color:var(--ultra);color:#fff}
+.mark.m-rej[aria-pressed="true"]{background:var(--minor);border-color:var(--minor);color:#fff}
+.editbox{
+  width:100%;font-family:var(--f-text);font-size:15px;line-height:1.5;color:var(--ink);
+  background:#fff;border:1px solid var(--ultra);padding:8px 10px;resize:vertical;
+}
+.editbox:focus{outline:2px solid var(--ultra-wash)}
+
+/* --- capture form --- */
+.capture{border:1px solid var(--rule-strong);background:var(--card);padding:16px;margin-bottom:20px}
+.capture-row{display:grid;grid-template-columns:88px 1fr;gap:12px;margin-bottom:11px}
+.capture-row.full{grid-template-columns:1fr}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f label{font-family:var(--f-text);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.inp,select.inp,textarea.inp{
+  font-family:var(--f-text);font-size:14.5px;color:var(--ink);background:var(--paper);
+  border:1px solid var(--rule);padding:8px 10px;width:100%;
+  transition:border-color var(--t-fast) linear;
+}
+.inp:focus{outline:2px solid var(--ultra-wash);outline-offset:0;border-color:var(--ultra)}
+textarea.inp{resize:vertical;line-height:1.5;font-family:var(--f-text)}
+select.inp{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:30px}
+
+.btn{
+  font-family:var(--f-text);font-size:13.5px;font-weight:600;letter-spacing:-.005em;
+  border:1px solid var(--ink);background:var(--ultra);color:#fff;
+  padding:10px 18px;cursor:pointer;transition:all var(--t-fast) linear;white-space:nowrap;
+}
+.btn:hover{background:var(--ultra-ink);border-color:var(--ultra-ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{background:var(--rule);border-color:var(--rule);color:var(--ink-3);cursor:not-allowed;transform:none}
+.btn.sec{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.sec:hover{background:var(--paper-2);border-color:var(--ink)}
+.btn.gh{background:transparent;border-color:transparent;color:var(--ink-2);padding:10px 10px}
+.btn.gh:hover{background:var(--paper-2);color:var(--ink)}
+.btn.sm{font-size:12px;padding:7px 13px}
+
+/* --- overview figures --- */
+.figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));border:1px solid var(--rule-strong);border-right:0;border-bottom:0;margin-bottom:22px;background:var(--card)}
+.fig{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:13px 14px}
+.fig .n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:30px;font-weight:600;line-height:1;letter-spacing:-.03em}
+.fig .l{font-family:var(--f-text);font-weight:500;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+.fig[data-s="major"]{background:var(--major-wash)}.fig[data-s="major"] .n{color:var(--major)}
+.fig[data-s="minor"]{background:var(--minor-wash)}.fig[data-s="minor"] .n{color:var(--minor)}
+
+/* --- control strip (filters / tag maker) --- */
+.strip{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;border:1px solid var(--rule);background:var(--card);padding:13px 14px;margin-bottom:20px}
+.strip .f{flex:1 1 180px}
+.strip .f.narrow{flex:0 1 130px}
+
+/* --- the appraisal instrument: an item table, not a card list --- */
+.table{border:1px solid var(--rule-strong);border-bottom:0;background:var(--card)}
+.trow{display:grid;grid-template-columns:62px minmax(0,1fr) auto;border-bottom:1px solid var(--rule);transition:background var(--t-fast) linear}
+.trow:first-child{border-top:0}
+.trow[data-sev="major"] .tcell-code{color:var(--major)}
+.trow[data-sev="minor"] .tcell-code{color:var(--minor)}
+.trow.is-flagged{background:var(--major-wash)}
+.trow.is-flagged[data-sev="minor"]{background:var(--minor-wash)}
+.tcell-code{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.05em;color:var(--ink-3);
+  border-right:1px solid var(--hair);padding:12px 10px;line-height:1.3;
+}
+.tcell-code b{display:block;color:var(--ink);font-weight:600;font-size:11.5px;letter-spacing:0}
+.tcell-body{padding:12px 14px 13px;min-width:0}
+.tcell-body .q{font-size:15px;font-weight:500;margin:0 0 4px;line-height:1.4}
+.tcell-body .hint{margin:0;font-size:13px;color:var(--ink-3);line-height:1.45}
+.tcell-body .src{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.05em;color:var(--ink-3);margin:6px 0 0}
+.tcell-body input.note-in{
+  font-family:var(--f-text);font-size:13.5px;background:var(--paper);border:1px solid var(--rule);
+  padding:6px 9px;width:100%;margin-top:9px;color:var(--ink);
+}
+.tcell-body input.note-in:focus{outline:2px solid var(--ultra-wash);outline-offset:0;border-color:var(--ultra)}
+.tcell-ans{display:flex;border-left:1px solid var(--hair);align-items:stretch}
+.tcell-ans button{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  background:transparent;border:0;border-left:1px solid var(--hair);color:var(--ink-2);
+  padding:0 13px;cursor:pointer;transition:all var(--t-fast) linear;min-width:66px;
+}
+.tcell-ans button:first-child{border-left:0}
+.tcell-ans button:hover{background:var(--paper-2);color:var(--ink)}
+.tcell-ans button[aria-pressed="true"][data-v="yes"]{background:var(--ok);color:#fff}
+.tcell-ans button[aria-pressed="true"][data-v="no"]{background:var(--major);color:#fff}
+.tcell-ans button[aria-pressed="true"][data-v="unclear"]{background:var(--minor);color:#fff}
+.thead{
+  display:grid;grid-template-columns:62px minmax(0,1fr) auto;border-bottom:1px solid var(--rule-strong);
+  background:var(--ink);
+}
+.thead span{font-family:var(--f-text);font-weight:600;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--paper);padding:8px 12px}
+.thead span:last-child{border-left:1px solid #33383d;min-width:230px}
+
+/* --- the output sheet --- */
+.sheet{
+  background:#fff;border:1px solid var(--rule);
+  outline:1px solid var(--rule);outline-offset:5px;
+  padding:0 0 34px;margin-bottom:32px;
+}
+.sheet-band{background:var(--ultra);color:#fff;padding:11px 24px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.sheet-band .t{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.sheet-band .m{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;opacity:.85}
+.sheet-in{padding:26px 24px 0}
+.rep-sheet-title{font-family:var(--f-display);font-size:clamp(23px,3vw,32px);font-weight:700;font-variation-settings:'wdth' 92;letter-spacing:-.03em;margin:0 0 4px}
+.rep-ms{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);margin:0 0 22px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+.rsect{margin-bottom:24px}
+.rsect-h{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  margin:0 0 0;padding:6px 10px;background:var(--paper-2);border-bottom:2px solid var(--ink);
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+}
+.rsect-h[data-s="major"]{background:var(--major-wash);border-bottom-color:var(--major);color:var(--major)}
+.rsect-h[data-s="minor"]{background:var(--minor-wash);border-bottom-color:var(--minor);color:var(--minor)}
+.rsub{
+  font-family:var(--f-text);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  margin:16px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--hair);
+}
+.rline{display:grid;grid-template-columns:106px minmax(0,1fr) auto;gap:0;border-bottom:1px solid var(--hair);align-items:start}
+.rline:last-child{border-bottom:0}
+.rline-l{
+  font-family:var(--f-mono);font-size:11px;color:var(--ink-3);padding:9px 10px 9px 11px;
+  border-right:1px solid var(--hair);font-variant-numeric:tabular-nums;
+}
+.rline-l b{color:var(--ink);font-weight:600;display:block;font-size:11.5px}
+.rline-v{padding:9px 12px;font-size:14px;line-height:1.55;overflow-wrap:anywhere;cursor:text}
+.rline-v:hover{background:var(--ultra-wash)}
+.rline-v[contenteditable="true"]{background:#fff;outline:2px solid var(--ultra)}
+.rline.is-ai{background:#FBFAFE}
+.rline.is-ai .rline-l b{color:var(--ai)}
+.rline-x{
+  background:transparent;border:0;color:var(--ink-3);cursor:pointer;padding:9px 10px;
+  font-family:var(--f-mono);font-size:14px;line-height:1;opacity:0;transition:opacity var(--t-fast) linear,color var(--t-fast) linear;
+}
+.rline:hover .rline-x{opacity:1}
+.rline-x:hover{color:var(--major)}
+.rempty{color:var(--ink-3)}
+.addrow{
+  width:100%;text-align:left;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;
+  background:transparent;border:0;border-bottom:1px dashed var(--rule);color:var(--ink-3);
+  padding:7px 10px;cursor:pointer;transition:all var(--t-fast) linear;
+}
+.addrow:hover{border-bottom-color:var(--ultra);color:var(--ultra);background:var(--ultra-wash)}
+.passlist{font-family:var(--f-mono);font-size:11px;line-height:1.7;color:var(--ok);padding:9px 0;border-bottom:1px solid var(--hair)}
+
+.recs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1px solid var(--rule-strong);border-right:0;border-bottom:0;margin-top:20px;background:var(--card)}
+.rec{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:14px;cursor:pointer;transition:background var(--t-fast) linear;position:relative}
+.rec:hover{background:var(--paper-2)}
+.rec input{position:absolute;opacity:0;pointer-events:none}
+.rec-t{font-family:var(--f-display);font-size:16px;font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.015em;display:block}
+.rec-d{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase;display:block;margin-top:5px}
+.rec[data-checked="true"]{background:var(--ink)}
+.rec[data-checked="true"] .rec-t{color:var(--paper)}
+.rec[data-checked="true"] .rec-d{color:#9DA2A8}
+
+/* --- polish stage --- */
+.routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));border:1px solid var(--rule-strong);border-right:0;border-bottom:0;margin-bottom:22px;background:var(--card)}
+.route{
+  border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:16px 17px 18px;cursor:pointer;position:relative;transition:background var(--t-fast) linear;
+}
+.route:hover{background:var(--paper-2)}
+.route input{position:absolute;opacity:0;pointer-events:none}
+.route-k{font-family:var(--f-text);font-weight:600;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:7px}
+.route-t{font-family:var(--f-display);font-size:18px;font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.02em;display:block;margin-bottom:6px}
+.route-d{font-size:13px;color:var(--ink-2);line-height:1.5;display:block}
+.route[data-checked="true"]{background:var(--ultra-wash);outline:2px solid var(--ultra);outline-offset:-2px}
+.route[data-checked="true"] .route-t{color:var(--ultra-ink)}
+
+.note-blk{
+  border:1px solid var(--rule);border-left:0;border-right:0;background:var(--card);
+  padding:14px 16px;margin-bottom:18px;font-size:13.5px;color:var(--ink-2);line-height:1.6;
+}
+.note-blk b{color:var(--ink)}
+.privacy{
+  border:1px solid var(--ok);background:#F1F7F3;padding:13px 15px;margin-bottom:18px;
+  font-size:13.5px;line-height:1.6;color:var(--ink-2);
+}
+.privacy b{color:var(--ok);font-family:var(--f-text);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:5px}
+
+.kv{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px}
+.pill-out{
+  font-family:var(--f-mono);font-size:11px;padding:9px 11px;border:1px solid var(--rule);
+  background:var(--paper);color:var(--ink-2);display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.pill-out .dot{width:7px;height:7px;background:var(--ink-3);flex:none}
+.pill-out[data-st="ok"]{border-color:var(--ok);color:var(--ok)}.pill-out[data-st="ok"] .dot{background:var(--ok)}
+.pill-out[data-st="err"]{border-color:var(--major);color:var(--major)}.pill-out[data-st="err"] .dot{background:var(--major)}
+.pill-out[data-st="busy"]{border-color:var(--ultra);color:var(--ultra-ink)}.pill-out[data-st="busy"] .dot{background:var(--ultra);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.25}}
+
+.prompt-out{
+  font-family:var(--f-mono);font-size:12px;line-height:1.65;color:var(--ink);
+  background:var(--ink);color:#DDE1DC;border:0;padding:16px;width:100%;
+  height:230px;resize:vertical;
+}
+.prompt-out:focus{outline:2px solid var(--ultra)}
+
+.compare{display:grid;grid-template-columns:1fr;border:1px solid var(--rule-strong);margin-bottom:18px}
+@media(min-width:900px){.compare{grid-template-columns:1fr 1fr}}
+.cmp-col{border-bottom:1px solid var(--rule)}
+@media(min-width:900px){.cmp-col{border-bottom:0}.cmp-col+.cmp-col{border-left:1px solid var(--rule-strong)}}
+.cmp-h{
+  font-family:var(--f-text);font-size:11px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+  padding:8px 13px;background:var(--paper-2);border-bottom:1px solid var(--rule);
+  display:flex;justify-content:space-between;gap:10px;align-items:center;color:var(--ink-2);
+}
+.cmp-h[data-k="polished"]{background:var(--ultra);color:#fff;border-bottom-color:var(--ultra)}
+.cmp-b{padding:14px 15px;font-size:13.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;max-height:390px;overflow-y:auto;color:var(--ink)}
+.cmp-h[data-k="polished"]+.cmp-b{background:#fff}
+.marks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.marks span{font-family:var(--f-mono);font-size:11px}
+.marks .up{color:var(--ok)}.marks .dn{color:var(--major)}
+
+/* --- modal --- */
+.modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px}
+.modal[hidden]{display:none}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 46%,transparent);backdrop-filter:blur(2px)}
+.mcard{
+  position:relative;background:var(--paper);border:1px solid var(--ink);
+  max-width:600px;width:100%;max-height:86vh;overflow:auto;
+  outline:1px solid var(--ink);outline-offset:5px;
+}
+.mhead{background:var(--ink);padding:12px 20px}
+.mhead h2{font-family:var(--f-text);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--paper);margin:0;font-weight:500}
+.mbody{padding:22px 20px}
+.macts{display:flex;justify-content:flex-end;gap:8px;padding:0 20px 20px;flex-wrap:wrap}
+.gloss{border-bottom:1px solid var(--hair);padding:11px 0}
+.gloss-term{font-family:var(--f-mono);font-size:12px;font-weight:600;letter-spacing:.02em;margin:0 0 4px}
+.gloss-def{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.gloss-list{max-height:48vh;overflow-y:auto;margin-top:14px;border-top:1px solid var(--rule)}
+
+.empty{border:1px dashed var(--rule);padding:22px;color:var(--ink-3);font-size:14px;background:var(--card)}
+.opt-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:12px}
+.opt-head .nm{font-family:var(--f-display);font-size:17px;font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.015em}
+.opt-head .dc{font-family:var(--f-text);font-size:12px;color:var(--ink-3);letter-spacing:.01em}
+.foot{
+  border-top:1px solid var(--rule-strong);padding:16px 0 8px;margin-top:10px;
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center;
+}
+.foot .meta{font-family:var(--f-text);font-size:12px;letter-spacing:.01em;color:var(--ink-3)}
+.foot .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* --- invite choice: checked state takes the committed plane --- */
+.tag[aria-checked="true"]{background:var(--ultra);border-color:var(--ultra);color:#fff}
+
+/* --- AI Glossary: provenance violet, the prominent control in the strip --- */
+.reading .tools #btn-gloss{
+  background:var(--ai);border:1px solid var(--ai);color:#fff;
+  font-family:var(--f-text);font-size:12.5px;font-weight:600;letter-spacing:.03em;
+  padding:9px 15px;margin-right:4px;
+}
+.reading .tools #btn-gloss:hover{background:#472F7C;border-color:#472F7C;color:#fff}
+
+/* --- severity stamps in triage (severity acts carry severity colour) --- */
+.mark.m-maj[aria-pressed="true"]{background:var(--major);border-color:var(--major);color:#fff}
+.mark.m-min[aria-pressed="true"]{background:var(--minor);border-color:var(--minor);color:#fff}
+
+/* --- paper-sections editor (first read): chips in one row, the tag grammar --- */
+.secedit{border:1px solid var(--hair);background:var(--paper);padding:10px 12px 12px;margin-bottom:14px}
+.secedit-h{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.secedit-h .h2{letter-spacing:.01em;text-transform:none;font-family:var(--f-text);font-size:11.5px;color:var(--ink-3)}
+.seclist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;align-items:stretch}
+.secchip{
+  display:flex;align-items:stretch;border:1px solid var(--rule);background:var(--card);
+  transition:border-color var(--t-fast) linear,background var(--t-fast) linear;
+}
+.secchip:hover{border-color:var(--ink-3)}
+.secchip.drag-over{background:var(--ultra-wash);outline:1px solid var(--ultra);outline-offset:-1px}
+.sechandle{color:var(--ink-3);display:grid;place-items:center;cursor:grab;padding:0 2px 0 7px}
+.sechandle:active{cursor:grabbing}
+.secname{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.03em;color:var(--ink);background:transparent;
+  border:0;padding:6px 6px 6px 4px;min-width:84px;max-width:240px;
+}
+.secname:hover{background:var(--paper-2)}
+.secname:focus{background:#fff;outline:2px solid var(--ultra-wash);outline-offset:-2px}
+.secbtn{
+  background:transparent;border:0;border-left:1px solid var(--hair);color:var(--ink-2);
+  padding:0 7px;cursor:pointer;display:grid;place-items:center;
+  transition:all var(--t-fast) linear;
+}
+.secbtn:hover{color:var(--ink);background:var(--paper-2)}
+.secbtn:focus-visible{outline:2px solid var(--ultra);outline-offset:-2px}
+.secbtn:disabled{opacity:.35;cursor:not-allowed}
+.secbtn svg{width:9px;height:9px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:square;stroke-linejoin:miter}
+.secadd{display:flex;gap:8px;margin-top:10px}
+.secadd .inp{flex:1}
+
+/* --- provider presets and API type (polish) --- */
+.provs{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));border:1px solid var(--rule-strong);border-right:0;border-bottom:0;background:var(--card);margin-bottom:14px}
+.prov{
+  border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  background:transparent;padding:11px 8px 10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  font-family:var(--f-text);transition:background var(--t-fast) linear;
+}
+.prov:hover{background:var(--paper-2)}
+.prov svg{width:22px;height:22px;fill:var(--ink-2);transition:fill var(--t-fast) linear}
+.prov span{font-size:12px;font-weight:600;letter-spacing:.01em;color:var(--ink-2)}
+.prov[aria-checked="true"]{background:var(--ultra-wash);outline:2px solid var(--ultra);outline-offset:-2px}
+.prov[aria-checked="true"] svg{fill:var(--ultra-ink)}
+.prov[aria-checked="true"] span{color:var(--ultra-ink)}
+.apitype{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.apitype-l{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.apitype .tag{cursor:default}
+.apitype .tagset .tag{cursor:pointer}
+.apitype-h{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.02em;color:var(--ink-3);flex:1 1 180px;line-height:1.5}
+
+@media(max-width:880px){
+  .armature{grid-template-columns:1fr}
+  .rail{position:static;border-right:0;border-bottom:1px solid var(--rule-strong);padding:14px 0 16px;min-height:0}
+  .rail-list{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:4px}
+  .rail-btn{grid-template-columns:auto;padding:0}
+  .rail-lab{display:none}
+  .rail-foot{position:static;margin-top:12px;right:auto}
+  .rail-foot button{width:auto;padding:8px 14px}
+  .field{padding-bottom:56px}
+  .head-num{font-size:52px}
+  .note{grid-template-columns:92px minmax(0,1fr)}
+  .trow,.thead{grid-template-columns:52px minmax(0,1fr)}
+  .thead span:last-child,.tcell-ans{grid-column:1/-1;border-left:0;border-top:1px solid var(--hair)}
+  .tcell-ans button{min-height:42px}
+  .rline{grid-template-columns:92px minmax(0,1fr) auto}
+}
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  .lattice,.masthead,.reading,.rail,.foot,.addrow,.rline-x,.mod-skip,.letter-sect{display:none!important}
+  .armature{grid-template-columns:1fr}
+  .field{padding:0}
+  .sheet{border:0;outline:none}
+  .cmp-col{break-inside:avoid}
+  body{background:#fff}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="lattice" aria-hidden="true"></div>
+<a class="skip" href="#field">Skip to the working field</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="brand">
+      <img class="brand-logo" src="assets/iaims-icon-apple.svg" alt="iAIMS" width="110" height="110">
+      <div>
+        <div class="brand-name">iAIMS</div>
+        <div class="brand-sub">Reviewing tool</div>
+      </div>
+    </div>
+    <a class="btn gh sm" href="iaims-reviewing-tool.html" title="Back to the landing page">← Home</a>
+    <div class="msfield">
+      <label for="ms">Manuscript</label>
+      <input id="ms" type="text" placeholder="Identifier, first author, or working title" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="savestate" id="savestate"><span class="dot"></span><span id="savetext">Saved</span></div>
+  </div>
+</header>
+
+<div class="reading">
+  <div class="wrap">
+    <div class="counter is-zero" id="c-untagged"><span class="n">0</span><span class="l">Untagged</span></div>
+    <div class="counter is-zero" id="c-major" data-sig="major"><span class="n">0</span><span class="l">Major</span></div>
+    <div class="counter is-zero" id="c-minor" data-sig="minor"><span class="n">0</span><span class="l">Minor</span></div>
+    <div class="spacer"></div>
+    <div class="tools">
+      <button type="button" id="btn-gloss">AI Glossary<span aria-hidden="true"> ↗</span></button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="armature">
+    <nav class="rail" aria-label="Review steps">
+      <ol class="rail-list" id="raillist"></ol>
+      <div class="rail-foot">
+        <button type="button" id="btn-reset">Clear review</button>
+      </div>
+    </nav>
+    <section class="field" id="field" aria-live="polite"></section>
+  </div>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <p class="meta" id="footmeta">Readings stay in this browser. Nothing is uploaded.</p>
+    <div class="acts">
+      <button type="button" class="btn gh sm" id="btn-prev">Back</button>
+      <button type="button" class="btn sm" id="btn-next">Continue</button>
+    </div>
+  </div>
+</footer>
+
+<div class="modal" id="modal" hidden>
+  <div class="scrim" data-close></div>
+  <div class="mcard" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+    <div class="mhead"><h2 id="mtitle">Notice</h2></div>
+    <div class="mbody" id="mbody"></div>
+    <div class="macts">
+      <button type="button" class="btn sec sm" id="mcancel">Cancel</button>
+      <button type="button" class="btn sm" id="mconfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/jspdf.umd.min.js"></script>
+<script>
+(()=>{
+"use strict";
+const KEY="iaims-review-v3";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* ---- the six stations ---- */
+const STEPS=[
+ {n:1,k:"01",label:"Invite",desc:"Ask yourself three easy questions to decide whether you should accept this peer review: expertise, conflicts of interest and time."},
+ {n:2,k:"02",label:"First read",desc:"Read the manuscript entirely and jot down anything that comes to mind — don't worry about wording, severity, or what makes the final letter. A reading with no line number is labelled General, so give a line number whenever the manuscript has one."},
+ {n:3,k:"03",label:"Second read",desc:"Read the manuscript again after having detached from it (e.g. the next day). Filter your initial notes, add new ones, rewrite what you keep, and label each reading Major or Minor. Strike what doesn't belong. Tags (＋ Mark) are optional — they help the AI polish later."},
+ {n:4,k:"04",label:"AI Checklist",optional:true,desc:"Are you reviewing a paper involving AI in healthcare? This optional step contains a list of questions, based on EQUATOR checklists, that aims to filter out major flaws in AI methodology and reporting."},
+ {n:5,k:"05",label:"Report",desc:"View your entire report as it will appear as PDF. Make final adaptations, or choose for AI polishing in step 6."},
+ {n:6,k:"06",label:"AI polishing",optional:true,desc:"If you would like to have your text refined with the help of AI, provide your own model key — or generate a prompt for you to copy into your favourite chat app."}
+];
+const SECTIONS=["Introduction","Methods","Results","Discussion","General"];
+const PRE_TAGS=[
+ {name:"typo",sev:"minor"},{name:"grammar / language",sev:"minor"},{name:"formatting",sev:"minor"},
+ {name:"reference style",sev:"minor"},{name:"figure / table clarity",sev:"minor"},
+ {name:"methodological concern",sev:"major"},{name:"statistical issue",sev:"major"},
+ {name:"data concern",sev:"major"},{name:"interpretation overreach",sev:"major"},
+ {name:"novelty / originality",sev:"major"},{name:"ethics",sev:"major"}
+];
+const AI_FALLBACK=[
+ {id:"ai-test-set",code:"T1",q:"Did they keep a proper held-out test set?",hint:"Look for a train / validation / test split, and evidence that the test set never informed tuning.",sev:"major",sec:"Methods",src:"TRIPOD+AI · model evaluation"},
+ {id:"ai-leakage",code:"T2",q:"Did they rule out data leakage?",hint:"The same patient, scanner, or site appearing in both training and test inflates every number that follows.",sev:"major",sec:"Methods",src:"PROBAST+AI · analysis domain"},
+ {id:"ai-external",code:"T3",q:"Is there external validation on an independent cohort?",hint:"Single-centre internal validation only means the performance estimate is optimistic by an unknown margin.",sev:"major",sec:"Results",src:"CLAIM 2024 · test data"},
+ {id:"ai-metrics",code:"T4",q:"Are the metrics appropriate, with confidence intervals?",hint:"Discrimination, calibration, and clinical utility are different claims. Point estimates alone cannot carry them.",sev:"major",sec:"Methods",src:"APPRAISE-AI · performance"},
+ {id:"ai-baseline",code:"T5",q:"Did they compare against a sensible baseline or clinicians?",hint:"Without a comparator, a reported gain has no scale.",sev:"minor",sec:"Discussion",src:"APPRAISE-AI · comparator"},
+ {id:"ai-transparency",code:"T6",q:"Are data, code, and model details shared enough to reproduce?",hint:"Access terms, preprocessing, hyperparameters, random seeds, and the model version actually used.",sev:"minor",sec:"Methods",src:"TRIPOD+AI · open science"},
+ {id:"ai-failure",code:"T7",q:"Did they analyse failures, subgroups, and fairness?",hint:"Error cases and subgroup performance across sex, age, site, and ethnicity — not overall accuracy alone.",sev:"major",sec:"Results",src:"APPRAISE-AI · bias"},
+ {id:"ai-claim",code:"T8",q:"Do the clinical claims match what was actually tested?",hint:"The common failure is overreach from a retrospective AUC to a bedside benefit claim.",sev:"major",sec:"Discussion",src:"DECIDE-AI · interpretation"}
+];
+let AI_TPL=AI_FALLBACK.slice();
+const GLOSSARY=[
+["Accountability","Being answerable for one's actions and decisions. Researchers take responsibility for the integrity of their work and its impacts."],
+["Algorithmic bias","Systematic errors in an AI system that create unfair outcomes, often reflecting biases in training data or design."],
+["Calibration","How closely predicted probabilities match observed outcomes. A well-discriminating model can still be badly calibrated."],
+["Data leakage","Information from outside the training set — or from the test set itself — influencing model development and inflating apparent performance."],
+["Data privacy","Protecting personal and sensitive information from unauthorised access, misuse, or disclosure."],
+["Decision curve analysis","A method showing net benefit across a range of threshold probabilities, used to judge whether a model does more good than harm."],
+["Discrimination","A model's ability to separate cases from non-cases, usually summarised by AUC. Says nothing about calibration or utility."],
+["Dual use","Research or technology usable for both beneficial and harmful purposes, e.g. surveillance or manipulation."],
+["Explainability","How well an AI system's reasoning or decisions can be understood and communicated."],
+["External validation","Testing a model on data from a different institution, time period, or population than the development data."],
+["Fairness","Designing and evaluating AI so it does not systematically disadvantage people based on protected characteristics."],
+["Intellectual property","Legal rights over creations of the mind — datasets, algorithms, models, outputs."],
+["Misinformation","False information spread unintentionally, including confident but incorrect AI outputs."],
+["Model transparency","How openly a model's design, data, metrics, and limits are disclosed for scrutiny."],
+["Non-discrimination","AI must not unjustifiably disadvantage people based on protected characteristics."],
+["Open source","Software or models freely available to use, study, modify, and redistribute."],
+["Overfitting","A model learning noise specific to its training data, so performance falls on new data."],
+["Privacy","The right to control access to personal information and be free from unwarranted intrusion."],
+["PROBAST","A risk-of-bias assessment tool for prediction model studies, with an AI-specific extension in development."],
+["Traceability","Documented records allowing verification and reproducibility across the AI lifecycle."],
+["TRIPOD+AI","The 2024 reporting guideline for studies developing or evaluating a prediction model, whether regression-based or machine-learned."],
+["CLAIM","Checklist for Artificial Intelligence in Medical Imaging — the imaging-domain reporting checklist, updated in 2024."],
+["DECIDE-AI","The reporting guideline for small-scale, early live clinical evaluations of AI decision-support systems."],
+["Agentic AI","AI that plans, acts, and iterates across steps or tools toward a goal, keeping state."],
+["AI hallucination","AI generating fabricated content presented with high confidence."],
+["Benchmark","Standardised tests or datasets used to compare AI performance."],
+["Context window","How much text a model can consider in one interaction, measured in tokens."],
+["Fine-tuning","Further training a pre-trained model on a specific dataset or task."],
+["Large language model","AI trained on vast text to understand and generate human language."]
+];
+
+const base=()=>({step:1,ms:"",
+ invite:{expert:"",conflict:"",time:"",decision:"",note:""},
+ notes:[],customTags:[],
+ sections:SECTIONS.slice(),
+ ai:{on:null,ans:{}},
+ report:{intro:"",letter:""},rec:"",done:false,
+ polish:{route:"",base:"https://api.openai.com/v1",key:"",model:"",models:[],out:"",state:"idle",msg:"",api:"openai",provider:"openai"}});
+let S=base();
+try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);S=Object.assign(base(),p);S.invite=Object.assign(base().invite,p.invite||{});S.ai=Object.assign({on:null,ans:{}},p.ai||{});S.report=Object.assign({intro:"",letter:""},p.report||{});S.polish=Object.assign(base().polish,p.polish||{});}}catch(e){}
+if(!Array.isArray(S.sections)||!S.sections.length)S.sections=SECTIONS.slice();
+/* migrate legacy invite keys (ex/cf/tm were written but never read) */
+if(S.invite.ex){if(!S.invite.expert)S.invite.expert=S.invite.ex;delete S.invite.ex;}
+if(S.invite.cf){if(!S.invite.conflict)S.invite.conflict=S.invite.cf;delete S.invite.cf;}
+if(S.invite.tm){if(!S.invite.time)S.invite.time=S.invite.tm;delete S.invite.tm;}
+let timer=null;
+const save=()=>{clearTimeout(timer);timer=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+ const st=$("#savestate");if(st){$("#savetext").textContent="Saved "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});}
+ st.animate([{opacity:1},{opacity:.35},{opacity:1}],{duration:320,easing:"ease-out"});},260);};
+
+/* ---- device stats + GoatCounter events (visits and report saves only) ---- */
+const SKEY="iaims-stats-v1";
+const GC="https://iaimsreviewtool2026.goatcounter.com/count";
+let STAT={visits:0,pdf:0,txt:0,copy:0,polish:0,checklist:0,first:0,last:0};
+try{const r=localStorage.getItem(SKEY);if(r)STAT=Object.assign(STAT,JSON.parse(r)||{});}catch(e){}
+const statSave=()=>{try{localStorage.setItem(SKEY,JSON.stringify(STAT));}catch(e){}};
+const gcHit=ev=>{try{new Image().src=GC+"?p="+encodeURIComponent(location.pathname)+(ev?"&event="+encodeURIComponent(ev):"")+"&t="+Date.now();}catch(e){}};
+function statVisit(){STAT.visits=(STAT.visits||0)+1;STAT.first=STAT.first||Date.now();STAT.last=Date.now();statSave();}
+function hitEvent(k,ev){STAT[k]=(STAT[k]||0)+1;STAT.last=Date.now();statSave();gcHit(ev);}
+
+const allTags=()=>PRE_TAGS.concat((S.customTags||[]).map(t=>({name:t.name,sev:t.sev,custom:true})));
+const tagSev=n=>{const f=allTags().find(t=>t.name===n);return f?f.sev:"";};
+const sevOf=n=>{if(n.stamp)return n.stamp;if(n.severity)return n.severity;const ts=n.tags||[];if(ts.some(t=>tagSev(t)==="major"))return"major";if(ts.some(t=>tagSev(t)==="minor"))return"minor";return"";};
+const live=()=>S.notes.filter(n=>n.status!=="rejected");
+const aiOn=()=>S.ai.on===true;
+const aiItems=()=>AI_TPL;
+const aiConcerns=sev=>!aiOn()?[]:aiItems().map(t=>({t,a:(S.ai.ans||{})[t.id]})).filter(x=>x.a&&(x.a.val==="no"||x.a.val==="unclear")&&(x.t.sev||"major")===sev);
+const aiPassed=()=>aiItems().filter(t=>((S.ai.ans||{})[t.id]||{}).val==="yes");
+async function loadTpl(){try{const r=await fetch("assets/ai-checklist-template.json",{cache:"no-store"});if(!r.ok)return;const j=await r.json();
+ if(Array.isArray(j)&&j.length&&j.every(x=>x&&x.id&&x.q)){AI_TPL=j.map((x,i)=>({code:x.code||("T"+(i+1)),src:x.src||"AI consideration",sev:x.severity||x.sev||"major",sec:x.section||x.sec||"Methods",q:x.q,hint:x.hint||"",id:x.id}));if(S.step===4||S.step===5)render();}}catch(e){}}
+
+/* ---- modal ---- */
+let mfn=null;
+function openModal(t,b,ok,fn){$("#mtitle").textContent=t;$("#mbody").innerHTML=b;$("#mconfirm").textContent=ok||"Confirm";$("#mconfirm").disabled=false;mfn=fn||null;$("#modal").hidden=false;$("#mconfirm").focus();}
+function closeModal(){$("#modal").hidden=true;mfn=null;}
+$("#mcancel").addEventListener("click",closeModal);
+document.querySelector("[data-close]").addEventListener("click",closeModal);
+$("#mconfirm").addEventListener("click",()=>{if(mfn)mfn();else closeModal();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeModal();});
+
+/* ---- rail ---- */
+function renderRail(){
+  const w=$("#raillist");w.textContent="";
+  STEPS.forEach(s=>{
+    const done=stepDone(s.n);
+    const li=document.createElement("li");
+    const b=document.createElement("button");
+    b.type="button";b.className="rail-btn"+(s.n===S.step?"":"")+(done?" is-done":"");
+    if(s.n===S.step)b.setAttribute("aria-current","true");
+    b.innerHTML='<span class="rail-num">'+s.k+'</span><span class="rail-lab">'+esc(s.label)+
+      (s.optional?'<span class="rail-opt">Optional</span>':"")+'</span>';
+    b.addEventListener("click",()=>go(s.n));
+    li.append(b);w.append(li);
+  });
+}
+function stepDone(n){
+  if(n===1)return!!S.invite.decision;
+  if(n===2)return S.notes.length>0;
+  if(n===3)return live().some(x=>sevOf(x));
+  if(n===4)return S.ai.on!==null;
+  if(n===5)return !!S.rec;
+  return S.polish.route!=="";
+}
+const counters=()=>{
+  const t=S.notes.length;
+  const maj=live().filter(n=>sevOf(n)==="major").length;
+  const min=live().filter(n=>sevOf(n)==="minor").length;
+  const un=live().filter(n=>!sevOf(n)).length;
+  const rj=S.notes.filter(n=>n.status==="rejected").length;
+  return {t,maj,min,un,rj};
+};
+function renderReading(){
+  const c=counters();
+  const set=id=>{const el=$(id);if(!el)return;const v=id==="#c-major"?c.maj:id==="#c-minor"?c.min:c.un;
+    el.querySelector(".n").textContent=v;el.classList.toggle("is-zero",v===0);};
+  set("#c-untagged");set("#c-major");set("#c-minor");
+}
+
+/* ---- render ---- */
+function render(){
+  renderRail();renderReading();
+  const F=$("#field");
+  if(S.step===1)F.innerHTML=vInvite();
+  if(S.step===2)F.innerHTML=vRead();
+  if(S.step===3)F.innerHTML=vTriage();
+  if(S.step===4)F.innerHTML=vAppraise();
+  if(S.step===5)F.innerHTML=vReport();
+  if(S.step===6)F.innerHTML=vPolish();
+  wire();
+  $("#btn-prev").style.visibility=S.step===1?"hidden":"visible";
+  /* Continue only appears on the invite once the reviewer has accepted */
+  $("#btn-next").style.display=(S.step===1&&S.invite.decision!=="accept")?"none":"";
+  $("#btn-next").textContent=S.step===6?"Done":"Continue → "+STEPS[Math.min(5,S.step)].label;
+}
+function head(n,extra){
+  const s=STEPS[n-1];
+  return '<div class="head"><div class="head-num">'+s.k+'</div><div class="head-txt">'+
+   '<h1 class="head-title">'+esc(s.label)+(s.optional?' <span style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;color:var(--ink-3);vertical-align:middle">OPTIONAL</span>':"")+'</h1>'+
+   '<p class="head-desc">'+esc(s.desc)+'</p>'+(extra||"")+'</div></div>';
+}
+
+/* ---- 01 invite ---- */
+const INV_NOTE={
+ extension:"Thank you for the invitation. I would be glad to review this manuscript, but I cannot meet the current deadline — please contact the journal as soon as possible so we can agree a new date.",
+ decline:"Thank you for the invitation. Unfortunately I must decline this review — please contact the journal as soon as possible to find a reviewer with the right expertise."};
+function vInvite(){
+  const q=(name,label,opts,cur)=>'<div style="margin-bottom:18px"><span style="font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:7px">'+esc(label)+'</span><div class="tagset" role="radiogroup" aria-label="'+esc(label)+'">'+
+    opts.map(o=>'<button type="button" class="tag" role="radio" aria-checked="'+(cur===o.v)+'" data-radio="'+name+'" data-val="'+o.v+'">'+esc(o.t)+'</button>').join("")+'</div></div>';
+  return head(1)+
+  '<div class="capture" style="max-width:720px">'+
+    q("expert","Do you have the expertise this manuscript needs?",[{v:"yes",t:"Yes — squarely my area"},{v:"partial",t:"Partially"}],S.invite.expert)+
+    q("conflict","Any conflict of interest?",[{v:"no",t:"None"},{v:"yes",t:"Yes"}],S.invite.conflict)+
+    q("time","Can you meet the deadline?",[{v:"yes",t:"Yes"},{v:"no",t:"I need an extension"}],S.invite.time)+
+    '<div style="border-top:1px solid var(--rule);margin-top:22px;padding-top:18px">'+
+    '<span style="font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:8px">Your response</span>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));border:1px solid var(--rule-strong);border-right:0;border-bottom:0">'+
+    [["accept","Accept","Commit the time"],["extension","Extension","Timing only"],["decline","Decline","Expertise or conflict"]].map(r=>
+      '<label class="rec" data-checked="'+(S.invite.decision===r[0])+'"><input type="radio" name="dec" value="'+r[0]+'"'+(S.invite.decision===r[0]?" checked":"")+'>'+
+      '<span class="rec-t">'+r[1]+'</span><span class="rec-d">'+r[2]+'</span></label>').join("")+
+    '</div></div>'+
+    (S.invite.decision==="decline"||S.invite.decision==="extension"?
+      '<div style="margin-top:18px;border-top:1px solid var(--rule);padding-top:18px">'+
+      '<div class="f" style="margin-bottom:8px"><label for="inote">Notes for the editor</label>'+
+      '<textarea class="inp" id="inote" rows="3" spellcheck="true" placeholder="A suggested text is filled in — edit it as you like.">'+esc(S.invite.note||"")+'</textarea></div>'+
+      '<p class="meta" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-2);margin:0">Please contact the journal as soon as possible.</p></div>'
+     :"")+
+  '</div>'+
+  '<p class="meta" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-top:16px">Only accept work squarely in your field. If in doubt, decline or ask for more time.</p>';
+}
+
+/* ---- 02 first read ---- */
+const sectionsList=()=>(Array.isArray(S.sections)&&S.sections.length)?S.sections:SECTIONS;
+const lineLabel=n=>n.line?("L"+String(n.line)):"General";
+function secEditor(){
+  const secs=sectionsList();
+  const ICO={
+    grip:'<svg viewBox="0 0 10 14" fill="currentColor" stroke="none" aria-hidden="true"><circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/><circle cx="2" cy="7" r="1.2"/><circle cx="8" cy="7" r="1.2"/><circle cx="2" cy="12" r="1.2"/><circle cx="8" cy="12" r="1.2"/></svg>',
+    left:'<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M6.8 1.2 3 5l3.8 3.8"/></svg>',
+    right:'<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3.2 1.2 7 5l-3.8 3.8"/></svg>',
+    x:'<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>'
+  };
+  return '<div class="secedit">'+
+    '<div class="secedit-h"><span>Paper sections</span><span class="h2">drag a chip or use its arrows to reorder · click a name to edit</span></div>'+
+    '<ol class="seclist" id="seclist">'+secs.map((s,i)=>
+      '<li class="secchip" draggable="true" data-sec-i="'+i+'">'+
+        '<span class="sechandle" aria-hidden="true">'+ICO.grip+'</span>'+
+        '<input class="secname" value="'+esc(s)+'" size="'+Math.min(30,Math.max(8,s.length+2))+'" data-sec-rename="'+i+'" aria-label="Section '+(i+1)+' name" spellcheck="false">'+
+        '<button type="button" class="secbtn" data-sec-up="'+i+'" aria-label="Move '+esc(s)+' left"'+(i===0?" disabled":"")+'>'+ICO.left+'</button>'+
+        '<button type="button" class="secbtn" data-sec-down="'+i+'" aria-label="Move '+esc(s)+' right"'+(i===secs.length-1?" disabled":"")+'>'+ICO.right+'</button>'+
+        '<button type="button" class="secbtn" data-sec-del="'+i+'" aria-label="Remove '+esc(s)+'"'+(secs.length<2?" disabled":"")+'>'+ICO.x+'</button>'+
+      '</li>').join("")+'</ol>'+
+    '<div class="secadd"><input class="inp" id="secnew" placeholder="Add a section (e.g. Abstract)" autocomplete="off">'+
+      '<button type="button" class="btn sec sm" id="secaddbtn">Add section</button></div>'+
+  '</div>';
+}
+function moveSec(i,d){const a=S.sections;const j=i+d;if(j<0||j>=a.length)return;const t=a[i];a[i]=a[j];a[j]=t;save();render();}
+function delSec(i){
+  if(S.sections.length<2)return;
+  const removed=S.sections[i];
+  const fb=S.sections.includes("General")?"General":(S.sections[i+1]||S.sections[i-1]);
+  S.notes.forEach(n=>{if(n.section===removed)n.section=fb;});
+  S.sections.splice(i,1);save();render();
+}
+function renameSec(i,v){
+  const old=S.sections[i],nv=String(v||"").trim();
+  if(!nv||nv===old){render();return;}
+  if(S.sections.includes(nv)){render();return;}
+  S.sections[i]=nv;
+  S.notes.forEach(n=>{if(n.section===old)n.section=nv;});
+  save();render();
+}
+function vRead(){
+  const secs=sectionsList();
+  const sorted=[...S.notes].sort((a,b)=>(parseInt(a.line)||99999)-(parseInt(b.line)||99999));
+  return head(2)+
+  '<div class="capture">'+
+   secEditor()+
+   '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px">Capture a reading</div>'+
+   '<div class="capture-row">'+
+     '<div class="f"><label for="nl">Line</label><input class="inp" id="nl" type="number" min="1" placeholder="42" inputmode="numeric"></div>'+
+     '<div class="f"><label for="ns">Section</label><select class="inp" id="ns">'+secs.map(s=>'<option>'+esc(s)+'</option>').join("")+'</select></div>'+
+   '</div>'+
+   '<div class="capture-row full"><div class="f"><label for="nt">Observation</label>'+
+     '<textarea class="inp" id="nt" rows="3" placeholder="What did you notice at this line? Leave Line empty for a general remark — it will be labelled General."></textarea></div></div>'+
+   '<button type="button" class="btn" id="addN1">Add reading</button> '+
+   '<span class="meta" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-left:10px">No severity yet — that is the second read.</span>'+
+  '</div>'+
+  '<div class="strip">'+
+    '<div class="f"><label for="nq">Filter</label><input class="inp" id="nq" placeholder="Text or line number" autocomplete="off"></div>'+
+    '<div class="f narrow"><label for="nsec">Section</label><select class="inp" id="nsec"><option value="">All</option>'+secs.map(s=>'<option>'+esc(s)+'</option>').join("")+'</select></div>'+
+    '<span class="meta" id="ncount" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-3);padding-bottom:9px">'+S.notes.length+' of '+S.notes.length+'</span>'+
+  '</div>'+
+  (sorted.length?'<div id="nlist">'+sorted.map(noteCard).join("")+'</div>'
+   :'<div class="empty">No readings yet. The first pass is capture only: note the line, note the section, note what you saw. Judgement comes in the second read, once you have the whole paper in your head.</div>');
+}
+function noteCard(n){
+  const s=sevOf(n);
+  const st=n.status==="rejected"?'<span class="sevtag" data-s="none">struck</span>':"";
+  const tags=(n.tags||[]).map(t=>'<span class="sevtag" data-s="'+esc(tagSev(t)||"none")+'">'+esc(t)+'</span>').join("");
+  return '<article class="note'+(s==="major"?" n-major":s==="minor"?" n-minor":"")+(n.status==="rejected"?" is-rejected":"")+'" data-card="'+n.id+'">'+
+   '<div class="note-schema"><span class="note-line">'+esc(lineLabel(n))+'</span><span class="note-sec">'+esc(n.section||"General")+'</span>'+
+     (s==='major'?'<span class="sevtag" data-s="major">MAJ</span>':s==='minor'?'<span class="sevtag" data-s="minor">MIN</span>':'<span class="sevtag" data-s="none">—</span>')+'</div>'+
+   '<div class="note-body"><p class="note-text clickable" data-edit="'+n.id+'" title="Click to edit">'+esc(n.text)+'</p>'+
+     '<div class="note-meta">'+st+tags+
+       '<div class="note-acts"><button type="button" class="mark" data-del="'+n.id+'">Delete</button></div>'+
+     '</div></div></article>';
+}
+
+/* ---- 03 triage ---- */
+function vTriage(){
+  const c=counters();
+  const tagRow=(n)=>{
+    const tags=allTags(),on=n.tags||[];
+    const active=tags.filter(t=>on.includes(t.name));
+    const open=S.openTags===n.id;
+    let h='<div class="tagset" style="margin-top:9px;align-items:center">';
+    h+=active.length?active.map(t=>'<button type="button" class="tag" aria-pressed="true" data-tag="'+esc(t.name)+'" data-id="'+n.id+'" data-sev="'+esc(t.sev)+'">'+esc(t.name)+' ×</button>').join("")
+      :'<span class="mark" style="border:0;padding-left:0;color:var(--ink-3)">No mark yet</span>';
+    h+='<button type="button" class="mark" data-open="'+n.id+'" aria-expanded="'+open+'">'+(open?"Close marks":"＋ Mark")+'</button>';
+    h+='</div>';
+    if(open)h+='<div class="tagset" style="margin-top:8px;padding:10px;border:1px solid var(--rule);background:var(--paper)">'+
+      tags.map(t=>'<button type="button" class="tag" aria-pressed="'+on.includes(t.name)+'" data-tag="'+esc(t.name)+'" data-id="'+n.id+'" data-sev="'+esc(t.sev)+'">'+esc(t.name)+'</button>').join("")+'</div>';
+    return h;
+  };
+  return head(3)+
+  '<div class="figures">'+
+    '<div class="fig"><div class="n">'+c.un+'</div><div class="l">Untagged</div></div>'+
+    '<div class="fig" data-s="major"><div class="n">'+c.maj+'</div><div class="l">Major</div></div>'+
+    '<div class="fig" data-s="minor"><div class="n">'+c.min+'</div><div class="l">Minor</div></div>'+
+  '</div>'+
+  '<div class="note-blk"><b>Stamp each reading Major or Minor.</b> Yellow is Minor, red is Major, and every mark carries its MAJ / MIN code so the marking survives without colour. Striking a reading through is not deleting it — struck readings stay visible and stay out of the report. Tags (＋ Mark) are optional — they help the AI polish stage later.</div>'+
+  '<div class="strip">'+
+    '<div class="f"><label for="ctName">Your own tag</label><input class="inp" id="ctName" placeholder="e.g. unclear figure legend" autocomplete="off"></div>'+
+    '<div class="f narrow"><label for="ctSev">Weight</label><select class="inp" id="ctSev"><option value="minor">minor</option><option value="major">major</option></select></div>'+
+    '<button type="button" class="btn sec sm" id="ctAdd" style="margin-bottom:0">Add tag</button>'+
+    (S.customTags.length?'<div style="flex:1 1 100%;display:flex;gap:6px;flex-wrap:wrap;padding-top:4px">'+S.customTags.map(t=>'<span class="sevtag" data-s="'+esc(t.sev)+'">'+esc(t.name)+' <a href="#" data-rmtag="'+esc(t.name)+'" style="color:inherit">×</a></span>').join("")+'</div>':"")+
+  '</div>'+
+  '<div class="capture">'+
+   '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px">Add a second-read finding</div>'+
+   '<div class="capture-row">'+
+     '<div class="f"><label for="n2l">Line</label><input class="inp" id="n2l" type="number" min="1" placeholder="118" inputmode="numeric"></div>'+
+     '<div class="f"><label for="n2s">Section</label><select class="inp" id="n2s">'+sectionsList().map(s=>'<option>'+esc(s)+'</option>').join("")+'</select></div>'+
+   '</div>'+
+   '<div class="capture-row full"><div class="f"><label for="n2t">Observation</label><textarea class="inp" id="n2t" rows="2"></textarea></div></div>'+
+   '<button type="button" class="btn sec sm" id="addN2">Add reading</button>'+
+  '</div>'+
+  (S.notes.length?[...S.notes].sort((a,b)=>(parseInt(a.line)||99999)-(parseInt(b.line)||99999)).map(n=>{
+    const s=sevOf(n);
+    return '<article class="note'+(s==="major"?" n-major":s==="minor"?" n-minor":"")+(n.status==="rejected"?" is-rejected":"")+'" data-card="'+n.id+'">'+
+      '<div class="note-schema"><span class="note-line">'+esc(lineLabel(n))+'</span><span class="note-sec">'+esc(n.section||"General")+'</span>'+
+        (s==='major'?'<span class="sevtag" data-s="major">MAJ</span>':s==='minor'?'<span class="sevtag" data-s="minor">MIN</span>':'<span class="sevtag" data-s="none">untagged</span>')+'</div>'+
+      '<div class="note-body"><p class="note-text clickable" data-edit="'+n.id+'" title="Click to edit">'+esc(n.text)+'</p>'+
+        tagRow(n)+
+        '<div class="note-meta"><div class="note-acts">'+
+          '<button type="button" class="mark m-maj" aria-pressed="'+(sevOf(n)==="major"&&n.status!=="rejected")+'" data-sev-btn="major" data-id="'+n.id+'">Major</button>'+
+          '<button type="button" class="mark m-min" aria-pressed="'+(sevOf(n)==="minor"&&n.status!=="rejected")+'" data-sev-btn="minor" data-id="'+n.id+'">Minor</button>'+
+          '<button type="button" class="mark m-rej" aria-pressed="'+(n.status==="rejected")+'" data-rej="'+n.id+'">'+(n.status==="rejected"?"Restore":"Strike")+'</button>'+
+        '</div></div></div></article>';
+  }).join(""):'<div class="empty">Nothing to triage yet. Add your first-pass readings in the previous step.</div>');
+}
+
+/* ---- 04 appraisal ---- */
+function vAppraise(){
+  let h=head(4);
+  h+='<div class="routes">'+
+    [[true,"Run the checklist","Ask each item in turn. Anything not answered Yes becomes a report point."],
+     [false,"Skip it","The report works either way. You can open this checklist at any time."]].map(r=>
+     '<label class="route" data-checked="'+(S.ai.on===r[0])+'"><input type="radio" name="aiOn" value="'+(r[0]?"yes":"no")+'"'+(S.ai.on===r[0]?" checked":"")+'>'+
+     '<span class="route-k">'+(r[0]?"AI checklist":"No checklist")+'</span><span class="route-t">'+r[1]+'</span><span class="route-d">'+r[2]+'</span></label>').join("")+
+   '</div>';
+  if(S.ai.on===true){
+    const fl=aiConcerns("major").length+aiConcerns("minor").length,ps=aiPassed().length,tot=aiItems().length;
+    h+='<div class="figures">'+
+      '<div class="fig" data-s="major"><div class="n">'+fl+'</div><div class="l">Flagged</div></div>'+
+      '<div class="fig"><div class="n">'+ps+'</div><div class="l">Passed</div></div>'+
+      '<div class="fig"><div class="n">'+(tot-ps-fl)+'</div><div class="l">Unanswered</div></div>'+
+      '<div class="fig"><div class="n">'+tot+'</div><div class="l">Items</div></div>'+
+    '</div>';
+    h+='<div class="note-blk"><b>No and Unclear merge into the report.</b> Each flagged item lands in its section as a report point carrying the item code and a purple mark, so the editor can see what prompted it. Yes answers are listed as checks passed.</div>';
+    h+='<div class="table"><div class="thead"><span>Item</span><span>Question</span><span>Answer</span></div>'+
+      aiItems().map(t=>{
+        const a=(S.ai.ans||{})[t.id]||{val:"",note:""};
+        const fl2=a.val==="no"||a.val==="unclear";
+        return '<div class="trow'+(fl2?" is-flagged":"")+'" data-sev="'+esc(t.sev)+'">'+
+          '<div class="tcell-code"><b>'+esc(t.code||t.id)+'</b>'+esc(t.sev)+'<br>'+esc(t.sec)+'</div>'+
+          '<div class="tcell-body"><p class="q">'+esc(t.q)+'</p><p class="hint">'+esc(t.hint)+'</p>'+
+            '<p class="src">'+esc(t.src||"")+'</p>'+
+            '<input class="note-in" data-ainote="'+t.id+'" placeholder="Note for the editor (optional)" value="'+esc(a.note||"")+'"></div>'+
+          '<div class="tcell-ans">'+["yes","no","unclear"].map(v=>
+            '<button type="button" data-ai="'+t.id+'" data-v="'+v+'" aria-pressed="'+(a.val===v)+'">'+v+'</button>').join("")+'</div>'+
+        '</div>';
+      }).join("")+'</div>';
+  }else if(S.ai.on===false){
+    h+='<div class="empty">Checklist skipped. Reports written without it are perfectly normal — the checklist is a prompt for your judgement, never a substitute for it.</div>';
+  }else{
+    h+='<div class="empty">Choose above. Nothing is committed either way, and the checklist can be reopened at any point before you file the report.</div>';
+  }
+  return h;
+}
+
+/* ---- 05 report ---- */
+function groups(){
+  const secs=sectionsList();
+  const g={major:{},minor:{}};
+  secs.forEach(s=>{g.major[s]=[];g.minor[s]=[];});
+  const un=[];
+  live().forEach(n=>{
+    const s=sevOf(n);
+    let sec=n.section||"General";
+    if(!Object.prototype.hasOwnProperty.call(g.major,sec))sec=secs.includes("General")?"General":secs[0];
+    if(s==="major")g.major[sec].push(n);
+    else if(s==="minor")g.minor[sec].push(n);
+    else un.push(n);
+  });
+  return {g,un};
+}
+function vReport(){
+  const {g,un}=groups();
+  let h=head(5);
+  if(un.length)h+='<div class="note-blk" style="border-color:var(--minor);background:var(--minor-wash)"><b>'+un.length+' reading'+(un.length>1?"s":"")+' still untagged.</b> They are held out of the report until you give them a weight in the second read.</div>';
+  h+='<div class="sheet"><div class="sheet-band"><span class="t">Peer-review report</span><span class="m">'+
+    (S.rec?esc(S.rec.replace(/^./,c=>c.toUpperCase())):"No recommendation set")+'</span></div>'+
+    '<div class="sheet-in">'+
+    '<h2 class="rep-sheet-title">Peer-review report</h2>'+
+    '<p class="rep-ms">'+esc(S.ms||"Untitled manuscript")+' · '+(aiOn()?"AI checklist run":"no AI checklist")+'</p>';
+  h+='<div class="rsect"><div class="rsect-h"><span>Overall impression</span></div>'+
+    '<div class="rline"><div class="rline-l"><b>Intro</b></div><div class="rline-v" data-r="intro">'+
+    (S.report.intro?esc(S.report.intro):'<span class="rempty">Click to write your opening. One or two sentences on what the paper is trying to do and whether it succeeds.</span>')+
+    '</div><span></span></div></div>';
+  const block=(title,sev,obj)=>{
+    let s='<div class="rsect"><div class="rsect-h" data-s="'+sev+'"><span>'+title+'</span><span>'+sev.toUpperCase()+'</span></div>';
+    sectionsList().forEach(sec=>{
+      const arr=obj[sec]||[],ai=aiConcerns(sev).filter(x=>(x.t.sec||"Methods")===sec);
+      if(!arr.length&&!ai.length)return;
+      s+='<p class="rsub">'+esc(sec)+'</p>';
+      arr.forEach(n=>{s+='<div class="rline"><div class="rline-l"><b>'+esc(lineLabel(n))+'</b>'+esc(n.section||"")+'</div>'+
+        '<div class="rline-v" data-r="'+n.id+'">'+esc(n.text)+((n.tags||[]).length?'<span class="sevtag" data-s="'+esc(sev)+'" style="margin-left:8px">'+esc(n.tags[0])+'</span>':"")+'</div>'+
+        '<button type="button" class="rline-x" data-rej="'+n.id+'" title="Strike this point">×</button></div>';});
+      ai.forEach(({t,a})=>{s+='<div class="rline is-ai"><div class="rline-l"><b>'+esc(t.code||t.id)+'</b>'+esc(a.val.toUpperCase())+'</div>'+
+        '<div class="rline-v">'+esc(t.q)+(a.note?' — '+esc(a.note):"")+'</div><span></span></div>';});
+      s+='<button type="button" class="addrow" data-addline data-sec="'+esc(sec)+'" data-sev="'+sev+'">+ Add a '+sev+' point in '+esc(sec)+'</button>';
+    });
+    return s+'</div>';
+  };
+  h+=block("Major concerns","major",g.major);
+  h+=block("Minor points","minor",g.minor);
+  const ps=aiPassed();
+  if(aiOn()&&ps.length)h+='<div class="rsect"><div class="rsect-h"><span>AI checklist checks passed</span></div><div class="passlist">'+
+    ps.map(t=>'✓ '+esc(t.code||t.id)+' — '+esc(t.q)).join("<br>")+'</div></div>';
+  h+='<div class="rsect letter-sect"><div class="rsect-h"><span>Letter to the editor</span></div>'+
+    '<div class="rline"><div class="rline-l"><b>Private</b></div><div class="rline-v" data-r="letter">'+
+    (S.report.letter?esc(S.report.letter):'<span class="rempty">Click to add a short private note to the editor — the part the authors should not read.</span>')+
+    '</div><span></span></div></div>';
+  h+='</div></div>';
+  h+='<span style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:9px">Recommendation</span>'+
+   '<div class="recs">'+[["accept","Accept","As it stands"],["minor","Minor revision","Fixable at revision"],["major","Major revision","Substantive rework"],["reject","Reject","Not salvageable"]].map(r=>
+    '<label class="rec" data-checked="'+(S.rec===r[0])+'"><input type="radio" name="rec" value="'+r[0]+'"'+(S.rec===r[0]?" checked":"")+'>'+
+    '<span class="rec-t">'+r[1]+'</span><span class="rec-d">'+r[2]+'</span></label>').join("")+'</div>';
+  h+='<div class="foot" style="margin-top:20px"><p class="meta" id="rmeta">'+
+    live().length+' report point'+(live().length===1?"":"s")+' in the hierarchy'+(aiOn()?' · checklist flagged '+(aiConcerns("major").length+aiConcerns("minor").length):'')+'</p>'+
+    '<div class="acts"><button type="button" class="btn sec sm" id="btn-copy">Copy report</button>'+
+    '<button type="button" class="btn sec sm" id="btn-txt">Save as TXT</button>'+
+    '<button type="button" class="btn sm" id="btn-pdf">Save as PDF</button></div></div>';
+  return h;
+}
+
+/* ---- 06 polish: providers (authored marks, one stroke system) ---- */
+const PROVIDERS=[
+ {id:"gemini",name:"Gemini",api:"gemini",base:"https://generativelanguage.googleapis.com/v1beta"},
+ {id:"openai",name:"OpenAI",api:"openai",base:"https://api.openai.com/v1"},
+ {id:"deepseek",name:"DeepSeek",api:"openai",base:"https://api.deepseek.com/v1"},
+ {id:"qwen",name:"Qwen",api:"openai",base:"https://dashscope-intl.aliyuncs.com/compatible-mode/v1"},
+ {id:"openrouter",name:"OpenRouter",api:"openai",base:"https://openrouter.ai/api/v1"},
+ {id:"kimi",name:"Kimi",api:"openai",base:"https://api.moonshot.cn/v1"},
+ {id:"glm",name:"GLM",api:"openai",base:"https://open.bigmodel.cn/api/paas/v4"},
+ {id:"mimo",name:"MiMo",api:"openai",base:"https://api.xiaomimimo.com/v1"}
+];
+const PROV_ICON={
+ gemini:'<path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"/>',
+ openai:'<path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>',
+ deepseek:'<path d="M23.748 4.651c-.254-.124-.364.113-.512.233-.051.04-.094.09-.137.137-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.155-.708-.311-.955-.65-.172-.24-.219-.509-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.094.172.187.129.323-.082.28-.18.553-.266.833-.055.179-.137.218-.328.14a5.5 5.5 0 0 1-1.737-1.179c-.857-.828-1.631-1.743-2.597-2.46a12 12 0 0 0-.689-.47c-.985-.957.13-1.743.387-1.836.27-.098.094-.433-.778-.428-.872.003-1.67.295-2.687.685a3 3 0 0 1-.465.136 9.6 9.6 0 0 0-2.883-.101c-1.885.21-3.39 1.1-4.497 2.622C.082 8.776-.231 10.854.152 13.02c.403 2.284 1.568 4.175 3.36 5.653 1.857 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.132-.284 4.994-1.86.47.234.962.328 1.78.398.629.058 1.235-.031 1.705-.129.735-.155.684-.836.418-.961-2.155-1.004-1.682-.595-2.112-.926 1.095-1.295 2.768-3.598 3.284-6.733.05-.346.115-.834.108-1.114-.004-.171.035-.238.23-.257a4.2 4.2 0 0 0 1.545-.475c1.397-.763 1.96-2.016 2.093-3.517.02-.23-.004-.467-.247-.588M11.58 18.168c-2.088-1.642-3.101-2.183-3.52-2.16-.39.024-.32.472-.234.763.09.288.207.487.371.74.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.168-1.361-.801-2.5-1.86-3.301-3.306-.775-1.393-1.225-2.888-1.299-4.482-.02-.385.094-.522.477-.592a4.7 4.7 0 0 1 1.53-.038c2.131.311 3.946 1.264 5.467 2.774.868.86 1.525 1.887 2.202 2.89.72 1.066 1.494 2.082 2.48 2.915.348.291.626.513.892.677-.802.09-2.14.109-3.055-.615zm1.001-6.44a.306.306 0 0 1 .415-.287.3.3 0 0 1 .113.074.3.3 0 0 1 .086.214c0 .17-.136.307-.308.307a.303.303 0 0 1-.306-.307m3.11 1.596c-.2.081-.4.151-.591.16a1.25 1.25 0 0 1-.798-.254c-.274-.23-.47-.358-.551-.758a1.7 1.7 0 0 1 .015-.588c.07-.327-.007-.537-.238-.727-.188-.156-.426-.199-.689-.199a.6.6 0 0 1-.254-.078.253.253 0 0 1-.114-.358 1 1 0 0 1 .192-.21c.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.392.451.462.576.685.915.176.264.336.536.446.848.066.194-.02.353-.25.45"/>',
+ qwen:'<path d="M23.919 14.545 20.817 9.17l1.47-2.544a.56.56 0 0 0 0-.566l-1.633-2.83a.57.57 0 0 0-.49-.283h-6.207L12.487.402a.57.57 0 0 0-.49-.284H8.732a.56.56 0 0 0-.49.284L5.139 5.775h-2.94a.56.56 0 0 0-.49.284L.077 8.887a.56.56 0 0 0 0 .567L3.18 14.83l-1.47 2.545a.56.56 0 0 0 0 .566l1.634 2.83a.57.57 0 0 0 .49.283h6.205l1.47 2.545a.57.57 0 0 0 .49.284h3.266a.57.57 0 0 0 .49-.284l3.104-5.375h2.94a.57.57 0 0 0 .49-.283l1.634-2.828a.55.55 0 0 0-.004-.568M8.733.686l1.634 2.828-1.634 2.828H21.8L20.164 9.17H7.425L5.63 6.06Zm1.306 19.801-6.205-.002 1.634-2.83h3.265L2.201 6.344h3.267q3.182 5.517 6.367 11.032zm10.124-5.66L18.53 12l-6.532 11.315-1.634-2.83c2.129-3.673 4.25-7.351 6.373-11.028h3.592l3.102 5.374z"/>',
+ openrouter:'<path d="M16.778 1.844v1.919q-.569-.026-1.138-.032-.708-.008-1.415.037c-1.93.126-4.023.728-6.149 2.237-2.911 2.066-2.731 1.95-4.14 2.75-.396.223-1.342.574-2.185.798-.841.225-1.753.333-1.751.333v4.229s.768.108 1.61.333c.842.224 1.789.575 2.185.799 1.41.798 1.228.683 4.14 2.75 2.126 1.509 4.22 2.11 6.148 2.236.88.058 1.716.041 2.555.005v1.918l7.222-4.168-7.222-4.17v2.176c-.86.038-1.611.065-2.278.021-1.364-.09-2.417-.357-3.979-1.465-2.244-1.593-2.866-2.027-3.68-2.508.889-.518 1.449-.906 3.822-2.59 1.56-1.109 2.614-1.377 3.978-1.466.667-.044 1.418-.017 2.278.02v2.176L24 6.014Z"/>',
+ kimi:'<path d="M21.765.351C22.998.351 24 1.353 24 2.586S22.998 4.82 21.765 4.82h-1.974c-.15 0-.26-.12-.26-.26V2.586A2.237 2.237 0 0 1 21.765.35M9.41 13.388l8.447-8.377c.16-.16.07-.471-.14-.471h-4.55s-.1.02-.14.06l-9.099 9.029c-.14.14-.35.02-.35-.21V4.81c0-.15-.1-.27-.221-.27H.22c-.12 0-.22.12-.22.27v18.57c0 .15.1.27.22.27h3.137c.12 0 .22-.12.22-.27v-3.79c0-.08.03-.16.08-.21l2.826-2.796c.07-.07.16-.08.241-.03l7.546 5.551a8.9 8.9 0 0 0 4.018 1.493c.12.01.23-.11.23-.27V19.76c0-.14-.08-.25-.19-.26a5.8 5.8 0 0 1-2.355-.942l-6.533-4.73c-.14-.09-.15-.32-.03-.441"/>',
+ glm:'<path d="M12.606 1.806l-1.677 2.388c-0.258 0.374-0.697 0.606-1.161 0.606h-9.162V1.794C0.594 1.806 12.606 1.806 12.606 1.806zM24 1.806L9.6 22.206 0 22.206 14.4 1.806zM11.394 22.206l1.69-2.4c0.258-0.374 0.697-0.606 1.161-0.606h9.149v3.006H11.394z"/>',
+ mimo:'<path d="M12 0C8.016 0 4.756.255 2.493 2.516.23 4.776 0 8.033 0 12.012c0 3.98.23 7.235 2.494 9.497C4.757 23.77 8.017 24 12 24c3.983 0 7.243-.23 9.506-2.491C23.77 19.247 24 15.99 24 12.012c0-3.984-.233-7.243-2.502-9.504C19.234.252 15.978 0 12 0zM4.906 7.405h5.624c1.47 0 3.007.068 3.764.827.746.746.827 2.233.83 3.676v4.54a.15.15 0 0 1-.152.147h-1.947a.15.15 0 0 1-.152-.148V11.83c-.002-.806-.048-1.634-.464-2.051-.358-.36-1.026-.441-1.72-.458H7.158a.15.15 0 0 0-.151.147v6.98a.15.15 0 0 1-.152.148H4.906a.15.15 0 0 1-.15-.148V7.554a.15.15 0 0 1 .15-.149zm12.131 0h1.949a.15.15 0 0 1 .15.15v8.892a.15.15 0 0 1-.15.148h-1.949a.15.15 0 0 1-.151-.148V7.554a.15.15 0 0 1 .151-.149zM8.92 10.948h2.046c.083 0 .15.066.15.147v5.352a.15.15 0 0 1-.15.148H8.92a.15.15 0 0 1-.152-.148v-5.352a.15.15 0 0 1 .152-.147Z"/>'
+};
+const provIcon=id=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+(PROV_ICON[id]||PROV_ICON.openai)+'</svg>';
+
+/* ---- 06 polish ---- */
+const POLISH_SYS=[
+"Improve the clarity, structure, and tone of the peer-review report below.",
+"Work only on how the argument is expressed. Do not add findings, do not invent facts, do not soften or strengthen any judgement, and do not remove any point.",
+"The priority order is: (1) replace vague language with the specific observation the reviewer already made; (2) split any sentence carrying two separate criticisms; (3) make each point's consequence explicit where the sentence is still ambiguous; (4) tighten the prose.",
+"Keep the reviewer's own voice and register. This is a signed scientific review, not a marketing document.",
+"Return the improved report in the same Markdown structure: Intro, then Major concerns, then Minor points, each split by Introduction / Methods / Results / Discussion, then Letter to the editor, then Recommendation.",
+"Return only the improved report. No preamble, no summary of changes, no commentary."].join(" ");
+
+function draftText(){
+  const {g}=groups();
+  let t="# Peer-review report\n\nManuscript: "+(S.ms||"untitled")+"\n\n";
+  t+="## Intro\n"+(S.report.intro||"")+"\n\n";
+  const sec=(title,obj,sev)=>{
+    let out="";
+    sectionsList().forEach(s=>{const a=obj[s]||[],ai=aiConcerns(sev).filter(x=>(x.t.sec||"Methods")===s);
+      if(!a.length&&!ai.length)return;
+      out+="\n### "+s+"\n";let i=0;
+      a.forEach(n=>{i++;out+=i+". ["+(n.line?("L"+n.line):"General")+"] "+n.text+((n.tags||[]).length?" ("+n.tags.join(", ")+")":"")+"\n";});
+      ai.forEach(({t:it,a:an})=>{i++;out+=i+". ["+(it.code||it.id)+" \u2014 "+an.val.toUpperCase()+"] "+it.q+(an.note?" \u2014 "+an.note:"")+"\n";});
+    });
+    return out?("## "+title+"\n"+out):"";
+  };
+
+  t+=sec("Major concerns",g.major,"major");
+  t+=sec("Minor points",g.minor,"minor");
+  const ps=aiPassed();
+  if(aiOn()&&ps.length)t+="\n## AI checklist checks passed\n"+ps.map(x=>"- "+(x.code||x.id)+" — "+x.q).join("\n")+"\n";
+  else if(S.ai.on===false)t+="\n## AI checklist\nSkipped (optional).\n";
+  t+="\n## Letter to the editor\n"+(S.report.letter||"")+"\n";
+  t+="\nRecommendation: "+(S.rec||"—")+"\n";
+  return t;
+}
+function promptText(){
+  return "You are helping me polish a peer-review report I have written for a healthcare-AI manuscript.\n\n"+
+  "Rules:\n"+
+  "1. Do not add findings, facts, or claims I have not made.\n"+
+  "2. Do not soften or strengthen any judgement, and do not delete any point.\n"+
+  "3. Replace vague wording with the specific observation I already made.\n"+
+  "4. Split any sentence carrying two separate criticisms.\n"+
+  "5. Make each point's consequence explicit where it is still ambiguous.\n"+
+  "6. Keep my voice. This is a signed scientific review, not marketing copy.\n"+
+  "7. Return the report in the same Markdown structure, and nothing else — no preamble, no list of changes.\n\n"+
+  "----- BEGIN MY REPORT -----\n\n"+draftText()+"\n----- END MY REPORT -----";
+}
+function vPolish(){
+  const p=S.polish;
+  let h=head(6);
+  h+='<div class="privacy"><b>What leaves this device</b>Only the draft report you would submit — the Intro, the Major and Minor points, the appraisal findings, the letter, and the recommendation. Because that report is built from your readings, your own wording travels with it. <b>The manuscript does not.</b> This tool has no field for manuscript text, so the polish step cannot send what it has never held; the only manuscript-derived string in a request is the identifier you typed into the header yourself. If even that is too much for the journal\'s rules, use the copy-out route below and keep everything on this machine.</div>';
+  h+='<div class="routes">'+
+    [["key","Your own key","Send the draft to a model you already pay for. The key stays in this browser and the request goes straight from your machine to the endpoint you name — never through this tool."],
+     ["prompt","Copy a prompt out","Get a finished prompt with your report already embedded. Paste it into whichever assistant you prefer, then paste the result back here to compare."],
+     ["","Not now","Skip. Your report is already complete and can be copied or filed from the previous step."]].map(r=>
+     '<label class="route" data-checked="'+(p.route===r[0])+'"><input type="radio" name="route" value="'+r[0]+'"'+(p.route===r[0]?" checked":"")+'>'+
+     '<span class="route-k">'+(r[0]==="key"?"Bring your own key":r[0]==="prompt"?"Copy out":"Skip")+'</span><span class="route-t">'+r[1]+'</span><span class="route-d">'+r[2]+'</span></label>').join("")+
+   '</div>';
+  if(p.route==="key"){
+    const preset=PROVIDERS.find(x=>x.id===p.provider)||null;
+    const isGem=p.api==="gemini";
+    h+='<div class="capture" style="max-width:760px">'+
+     '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px">Choose a provider</div>'+
+     '<div class="provs" role="radiogroup" aria-label="API provider">'+PROVIDERS.map(pr=>
+       '<button type="button" class="prov" role="radio" aria-checked="'+(p.provider===pr.id)+'" data-prov="'+pr.id+'">'+
+       provIcon(pr.id)+'<span>'+pr.name+'</span></button>').join("")+'</div>'+
+     '<div class="apitype">'+
+       '<span class="apitype-l">API</span>'+
+       (preset
+         ? '<div class="tagset"><span class="tag">'+(isGem?"Gemini-compatible":"OpenAI-compatible")+'</span></div>'+
+           '<span class="apitype-h">'+(isGem?"Set by the provider — Gemini is the only Gemini-compatible one here.":"Set by the provider — every provider except Gemini speaks OpenAI-compatible.")+'</span>'
+         : '<div class="tagset" role="radiogroup" aria-label="Endpoint API type">'+
+           '<button type="button" class="tag" role="radio" aria-checked="'+(!isGem)+'" data-apitype="openai">OpenAI-compatible</button>'+
+           '<button type="button" class="tag" role="radio" aria-checked="'+isGem+'" data-apitype="gemini">Gemini-compatible</button>'+
+           '</div><span class="apitype-h">Custom endpoint — choose the API dialect it speaks.</span>')+
+     '</div>'+
+     '<div class="capture-row full"><div class="f"><label for="pbase">API base URL</label>'+
+       '<input class="inp" id="pbase" value="'+esc(p.base)+'" spellcheck="false" autocomplete="off" placeholder="https://api.openai.com/v1"></div></div>'+
+     '<div class="capture-row full"><div class="f"><label for="pkey">API key</label>'+
+       '<input class="inp" id="pkey" type="password" value="'+esc(p.key)+'" spellcheck="false" autocomplete="off" placeholder="'+(isGem?"AIza…":"sk-…")+'"></div></div>'+
+     '<div class="capture-row full"><div class="f"><label for="pmodel">Model</label>'+
+       '<div style="display:flex;gap:8px;flex-wrap:wrap"><select class="inp" id="pmodel" style="flex:1 1 220px">'+
+       (p.models.length?p.models.map(m=>'<option'+(p.model===m?" selected":"")+'>'+esc(m)+'</option>').join(""):'<option value="">Fetch the endpoint\'s model list first</option>')+
+       '</select><button type="button" class="btn sec sm" id="btn-fetch">Fetch models</button></div></div></div>'+
+     '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">'+
+       '<button type="button" class="btn" id="btn-run">Polish the report</button>'+
+       '<button type="button" class="btn gh sm" id="btn-forget">Forget the key</button>'+
+     '</div>'+
+     '<div class="pill-out" data-st="'+esc(p.state==="idle"?"":p.state)+'" id="pstatus" style="margin-top:14px"><span class="dot"></span><span id="pmsg">'+
+       esc(p.msg||"Nothing sent yet.")+'</span></div>'+
+     '<p style="font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin:12px 0 0;line-height:1.6">Gemini speaks the Gemini-compatible API; every other provider here speaks OpenAI-compatible. Custom endpoints can use either. The key is kept in this browser\'s local storage on this device and is sent nowhere except the base URL above. On a shared or clinical machine, use Forget the key when you are done.</p>'+
+    '</div>';
+    if(p.out)h+=compareBlock(p.out);
+  }else if(p.route==="prompt"){
+    h+='<div class="capture">'+
+     '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px">Ready-to-paste prompt</div>'+
+     '<textarea class="prompt-out" id="pout" readonly>'+esc(promptText())+'</textarea>'+
+     '<div style="display:flex;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap">'+
+       '<button type="button" class="btn" id="btn-copyprompt">Copy prompt and report</button>'+
+       '<span class="apitype-h">Generated locally — the prompt leaves this browser only when you paste it.</span>'+
+     '</div></div>'+
+     '<div class="capture" style="margin-top:18px">'+
+       '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px">Paste the polished result back</div>'+
+       '<textarea class="inp" id="ppaste" rows="6" placeholder="Paste what the model returned, to compare it against your draft">'+esc(S.polish.pasted||"")+'</textarea>'+
+       '<button type="button" class="btn sec sm" id="btn-compare" style="margin-top:10px">Compare</button></div>';
+    if(p.out)h+=compareBlock(p.out);
+  }else{
+    h+='<div class="empty">The report stands on its own. Go back a step to copy it out or save it as a PDF.</div>';
+  }
+  return h;
+}
+function compareBlock(out){
+  const d=draftText();
+  const dw=d.trim().split(/\s+/).length, ow=out.trim().split(/\s+/).length;
+  const dl=(d.match(/\[L\d+\]/g)||[]).length, ol=(out.match(/\[L\d+\]/g)||[]).length;
+  return '<div class="rsect-h" style="margin-bottom:0"><span>Draft against polished</span><span class="marks">'+
+   '<span class="'+(ow<dw?"up":"dn")+'">'+(ow-dw>=0?"+":"")+(ow-dw)+' words</span>'+
+   '<span class="'+(ol>=dl?"up":"dn")+'">'+(ol-dl>=0?"+":"")+(ol-dl)+' line anchors</span></span></div>'+
+   '<div class="compare">'+
+   '<div class="cmp-col"><div class="cmp-h" data-k="draft"><span>Your draft</span><span>'+dw+' words</span></div><div class="cmp-b">'+esc(d)+'</div></div>'+
+   '<div class="cmp-col"><div class="cmp-h" data-k="polished"><span>Polished</span><span>'+ow+' words</span></div><div class="cmp-b">'+esc(out)+'</div></div>'+
+   '</div>'+
+   '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:26px">'+
+   '<button type="button" class="btn" id="btn-apply">Apply the polished report</button>'+
+   '<button type="button" class="btn sec" id="btn-keep">Keep my draft</button>'+
+   '<button type="button" class="btn gh sm" id="btn-copyout">Copy polished</button></div>'+
+   '<div class="note-blk"><b>Nothing has been applied yet.</b> Applying replaces the intro and the letter, and rewrites each report point from the polished text — you can still edit every line afterwards in the report. Keeping your draft discards the polished version entirely.</div>';
+}
+
+/* ---- wire ---- */
+function wire(){
+  const F=$("#field");
+  const Q=s=>F.querySelectorAll(s);
+
+  Q('[data-radio]').forEach(b=>b.addEventListener("click",()=>{
+    S.invite[b.getAttribute("data-radio")]=b.getAttribute("data-val");save();render();}));
+  Q('input[name="dec"]').forEach(r=>r.addEventListener("change",()=>{
+    S.invite.decision=r.value;
+    const suggestions=Object.values(INV_NOTE);
+    if(r.value==="extension"||r.value==="decline"){
+      if(!S.invite.note||suggestions.includes(S.invite.note))S.invite.note=INV_NOTE[r.value];
+    }else if(suggestions.includes(S.invite.note)){S.invite.note="";}
+    save();render();}));
+  const inote=F.querySelector("#inote");
+  if(inote)inote.addEventListener("input",()=>{S.invite.note=inote.value;save();});
+  Q('input[name="rec"]').forEach(r=>r.addEventListener("change",()=>{S.rec=r.value;save();render();}));
+  Q('input[name="aiOn"]').forEach(r=>r.addEventListener("change",()=>{S.ai.on=(r.value==="yes");
+    if(r.value==="yes")hitEvent("checklist","checklist_run");
+    save();render();}));
+  Q('input[name="route"]').forEach(r=>r.addEventListener("change",()=>{S.polish.route=r.value;S.polish.out="";S.polish.state="idle";S.polish.msg="";save();render();}));
+
+  aiItems().forEach(t=>{
+    Q('[data-ai="'+t.id+'"]').forEach(b=>b.addEventListener("click",()=>{
+      const v=b.getAttribute("data-v");
+      S.ai.ans[t.id]=Object.assign({},S.ai.ans[t.id],{val:((S.ai.ans[t.id]||{}).val===v?"":v)});
+      save();render();}));
+    Q('[data-ainote="'+t.id+'"]').forEach(i=>i.addEventListener("input",()=>{
+      S.ai.ans[t.id]=Object.assign({},S.ai.ans[t.id],{note:i.value});save();}));
+  });
+
+  const add=(le,se,te,st)=>{
+    const lv=le?F.querySelector(le):null,sv=se?F.querySelector(se):null,tv=F.querySelector(te);
+    if(!tv)return;const v=tv.value.trim();if(!v)return;
+    S.notes.push({id:uid(),line:lv&&lv.value?lv.value:"",section:sv?sv.value:"General",text:v,tags:[],severity:"",status:st||"raw",at:Date.now()});
+    save();render();
+  };
+  const a1=F.querySelector("#addN1");if(a1)a1.addEventListener("click",()=>add("#nl","#ns","#nt","raw"));
+  const a2=F.querySelector("#addN2");if(a2)a2.addEventListener("click",()=>add("#n2l","#n2s","#n2t","added"));
+
+  /* paper-sections editor: reorder, rename, add, remove */
+  Q("[data-sec-up]").forEach(b=>b.addEventListener("click",()=>moveSec(+b.getAttribute("data-sec-up"),-1)));
+  Q("[data-sec-down]").forEach(b=>b.addEventListener("click",()=>moveSec(+b.getAttribute("data-sec-down"),1)));
+  Q("[data-sec-del]").forEach(b=>b.addEventListener("click",()=>delSec(+b.getAttribute("data-sec-del"))));
+  Q("[data-sec-rename]").forEach(inp=>inp.addEventListener("change",()=>renameSec(+inp.getAttribute("data-sec-rename"),inp.value)));
+  const sab=F.querySelector("#secaddbtn");
+  if(sab)sab.addEventListener("click",()=>{
+    const v=(F.querySelector("#secnew").value||"").trim();
+    if(!v||S.sections.includes(v))return;
+    S.sections.push(v);save();render();});
+  let secDrag=null;
+  Q(".secchip").forEach(li=>{
+    li.addEventListener("dragstart",e=>{secDrag=+li.getAttribute("data-sec-i");
+      e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",String(secDrag));}catch(_){}});
+    li.addEventListener("dragover",e=>{e.preventDefault();li.classList.add("drag-over");});
+    li.addEventListener("dragleave",()=>li.classList.remove("drag-over"));
+    li.addEventListener("drop",e=>{e.preventDefault();li.classList.remove("drag-over");
+      const to=+li.getAttribute("data-sec-i");
+      if(isNaN(secDrag)||secDrag===to)return;
+      const m=S.sections.splice(secDrag,1)[0];S.sections.splice(to,0,m);secDrag=null;save();render();});
+  });
+
+  const ct=F.querySelector("#ctAdd");if(ct)ct.addEventListener("click",()=>{
+    const nm=(F.querySelector("#ctName").value||"").trim().toLowerCase();const sv=F.querySelector("#ctSev").value;
+    if(!nm)return;if(!allTags().some(t=>t.name===nm))S.customTags.push({name:nm,sev:sv});save();render();});
+  Q("[data-rmtag]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();
+    const n=a.getAttribute("data-rmtag");
+    S.customTags=S.customTags.filter(t=>t.name!==n);
+    S.notes.forEach(x=>{x.tags=(x.tags||[]).filter(t=>t!==n);});save();render();}));
+
+  Q("[data-open]").forEach(b=>b.addEventListener("click",()=>{
+    const id=b.getAttribute("data-open");
+    S.openTags=(S.openTags===id?"":id);render();}));
+  Q("[data-tag]").forEach(b=>b.addEventListener("click",()=>{
+    const n=S.notes.find(x=>x.id===b.getAttribute("data-id"));if(!n)return;
+    const nm=b.getAttribute("data-tag");n.tags=n.tags||[];
+    n.tags=n.tags.includes(nm)?n.tags.filter(t=>t!==nm):n.tags.concat([nm]);
+    n.severity=n.tags.some(t=>tagSev(t)==="major")?"major":n.tags.some(t=>tagSev(t)==="minor")?"minor":"";
+    if(n.tags.length&&(n.status==="raw"||!n.status))n.status="keep";
+    save();render();}));
+  Q("[data-sev-btn]").forEach(b=>b.addEventListener("click",()=>{
+    const n=S.notes.find(x=>x.id===b.getAttribute("data-id"));if(!n)return;
+    const v=b.getAttribute("data-sev-btn");
+    if(sevOf(n)===v&&n.stamp){n.stamp="";}
+    else{n.stamp=v;if(n.status==="rejected")n.status="keep";else if(!n.status||n.status==="raw")n.status="keep";}
+    save();render();}));
+  Q("[data-rej]").forEach(b=>b.addEventListener("click",()=>{
+    const n=S.notes.find(x=>x.id===b.getAttribute("data-rej"));
+    if(n){n.status=(n.status==="rejected"?((n.severity||(n.tags||[]).length)?"keep":"raw"):"rejected");save();render();}}));
+  Q("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+    S.notes=S.notes.filter(x=>x.id!==b.getAttribute("data-del"));save();render();}));
+
+  /* click-to-edit */
+  Q("[data-edit]").forEach(p=>p.addEventListener("click",()=>startEdit(p,p.getAttribute("data-edit"))));
+  Q("[data-r]").forEach(v=>v.addEventListener("click",()=>{
+    const k=v.getAttribute("data-r");
+    if(k==="intro"||k==="letter")startArea(v,k);
+    else startEdit(v,k);
+  }));
+
+  const nq=F.querySelector("#nq"),nsec=F.querySelector("#nsec");
+  if(nq||nsec){const apply=()=>{
+    const q2=(nq?nq.value:"").toLowerCase(),s=nsec?nsec.value:"";
+    let v=0;
+    F.querySelectorAll("[data-card]").forEach(c=>{
+      const n=S.notes.find(x=>x.id===c.getAttribute("data-card"));if(!n)return;
+      const ok=(!q2||n.text.toLowerCase().includes(q2)||String(n.line).includes(q2))&&(!s||n.section===s);
+      c.style.display=ok?"":"none";if(ok)v++;});
+    const nc=F.querySelector("#ncount");if(nc)nc.textContent=v+" of "+S.notes.length;};
+    if(nq)nq.addEventListener("input",apply);if(nsec)nsec.addEventListener("change",apply);}
+
+  Q("[data-addline]").forEach(b=>b.addEventListener("click",()=>{
+    const sec=b.getAttribute("data-sec"),sev=b.getAttribute("data-sev");
+    openModal("Add a "+sev+" point","<p style='margin:0 0 14px;font-size:13.5px;color:var(--ink-2)'>Section: <b>"+esc(sec)+"</b></p>"+
+      "<div class='capture-row'><div class='f'><label for='mLine'>Line</label><input class='inp' id='mLine' type='number' min='1'></div><div class='f'><label for='mTag'>Tag</label><select class='inp' id='mTag'><option value=''>none</option>"+allTags().map(t=>"<option>"+esc(t.name)+"</option>").join("")+"</select></div></div>"+
+      "<div class='capture-row full'><div class='f'><label for='mText'>Point</label><textarea class='inp' id='mText' rows='3'></textarea></div></div>","Add",()=>{
+      const t=$("#mText").value.trim();if(!t){closeModal();return;}
+      const tg=$("#mTag").value;
+      S.notes.push({id:uid(),line:$("#mLine").value||"",section:sec,text:t,tags:tg?[tg]:[],severity:sev,status:"added",at:Date.now()});
+      save();render();closeModal();});}));
+
+  const cp=F.querySelector("#btn-copy");if(cp)cp.addEventListener("click",e=>{hitEvent("copy","copy_report");copyText(draftText(),e.currentTarget,"Copy report");});
+  const cp2=F.querySelector("#btn-copyprompt");if(cp2)cp2.addEventListener("click",e=>{hitEvent("copy","copy_prompt");copyText(promptText(),e.currentTarget,"Copy prompt and report");});
+  const pd=F.querySelector("#btn-pdf");if(pd)pd.addEventListener("click",()=>savePdf());
+  const tx=F.querySelector("#btn-txt");if(tx)tx.addEventListener("click",()=>saveTxt());
+
+  /* polish: key route — the provider always owns the API dialect */
+  const pickProvider=pr=>{
+    S.polish.provider=pr.id;S.polish.api=pr.api;S.polish.base=pr.base;
+    S.polish.models=[];S.polish.model="";
+    S.polish.state="idle";S.polish.msg="Endpoint set to "+pr.name+" ("+(pr.api==="gemini"?"Gemini":"OpenAI")+"-compatible) — fetch its model list next.";
+    save();render();};
+  Q("[data-prov]").forEach(b=>b.addEventListener("click",()=>{
+    const pr=PROVIDERS.find(x=>x.id===b.getAttribute("data-prov"));if(pr)pickProvider(pr);}));
+  Q("[data-apitype]").forEach(b=>b.addEventListener("click",()=>{
+    const want=b.getAttribute("data-apitype");
+    if((S.polish.api==="gemini")===(want==="gemini"))return;
+    S.polish.api=want;S.polish.provider="";
+    S.polish.models=[];S.polish.model="";
+    S.polish.state="idle";S.polish.msg="Custom endpoint set to "+(want==="gemini"?"Gemini":"OpenAI")+"-compatible API.";
+    save();render();}));
+  ["pbase","pkey"].forEach(id=>{const el=F.querySelector("#"+id);if(el){el.addEventListener("input",()=>{
+    if(id==="pbase"){
+      S.polish.base=el.value;
+      const pr=PROVIDERS.find(x=>x.id===S.polish.provider);
+      if(pr&&pr.base!==normBase(el.value))S.polish.provider="";
+    }else S.polish.key=el.value;
+    save();});
+    if(id==="pbase")el.addEventListener("change",()=>{
+      const nb=normBase(el.value);
+      const match=PROVIDERS.find(x=>x.base===nb);
+      if(match&&match.id!==S.polish.provider)pickProvider(match);
+      else if(!match&&/generativelanguage\.googleapis\.com/.test(nb)&&S.polish.api!=="gemini"){
+        S.polish.api="gemini";S.polish.models=[];S.polish.model="";
+        S.polish.state="idle";S.polish.msg="Custom Gemini endpoint — Gemini-compatible API.";
+        save();render();
+      }else render();});}});
+  const pm=F.querySelector("#pmodel");if(pm)pm.addEventListener("change",()=>{S.polish.model=pm.value;save();});
+  const bf=F.querySelector("#btn-fetch");if(bf)bf.addEventListener("click",fetchModels);
+  const br=F.querySelector("#btn-run");if(br)br.addEventListener("click",runPolish);
+  const bg=F.querySelector("#btn-forget");if(bg)bg.addEventListener("click",()=>{
+    S.polish.key="";S.polish.models=[];S.polish.model="";pstat("","Key cleared from this browser.");save();render();});
+  const bc=F.querySelector("#btn-compare");if(bc)bc.addEventListener("click",()=>{
+    const v=F.querySelector("#ppaste").value.trim();S.polish.pasted=v;
+    if(!v){pstat("err","Nothing pasted yet.");return;}
+    S.polish.out=v;S.polish.state="idle";save();render();});
+  const ba=F.querySelector("#btn-apply");if(ba)ba.addEventListener("click",applyPolished);
+  const bk=F.querySelector("#btn-keep");if(bk)bk.addEventListener("click",()=>{S.polish.out="";save();render();});
+  const bo=F.querySelector("#btn-copyout");if(bo)bo.addEventListener("click",e=>{hitEvent("copy","copy_polished");copyText(S.polish.out,e.currentTarget,"Copy polished");});
+}
+function pstat(st,msg){const el=$("#pstatus");if(!el)return;el.setAttribute("data-st",st);$("#pmsg").textContent=msg;S.polish.state=st;S.polish.msg=msg;}
+function copyText(t,btn,label){
+  navigator.clipboard.writeText(t).then(()=>{
+    const o=btn.textContent;btn.textContent="Copied ✓";setTimeout(()=>btn.textContent=o,1600);
+  }).catch(()=>{
+    const ta=document.createElement("textarea");ta.value=t;document.body.append(ta);ta.select();
+    try{document.execCommand("copy");const o=btn.textContent;btn.textContent="Copied ✓";setTimeout(()=>btn.textContent=o,1600);}
+    catch(e){btn.textContent="Copy failed";}
+    ta.remove();});
+}
+function startEdit(el,id){
+  const n=S.notes.find(x=>x.id===id);if(!n||el.querySelector("textarea,input"))return;
+  const ta=document.createElement("textarea");ta.className="editbox";ta.rows=3;ta.value=n.text;
+  el.textContent="";el.append(ta);ta.focus();ta.select();
+  let done=false;
+  const commit=ok=>{if(done)return;done=true;
+    if(ok&&ta.value.trim()){n.text=ta.value.trim();if(n.status!=="rejected"&&n.status!=="added")n.status="edited";}
+    save();render();};
+  ta.addEventListener("blur",()=>commit(true));
+  ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))commit(true);if(e.key==="Escape"){done=true;render();}e.stopPropagation();});
+  ta.addEventListener("click",e=>e.stopPropagation());
+}
+function startArea(el,k){
+  if(el.querySelector("textarea"))return;
+  const s=STEPS[S.step-1];
+  const ta=document.createElement("textarea");ta.className="editbox";ta.rows=k==="intro"?4:3;
+  ta.value=S.report[k]||"";
+  ta.placeholder=k==="intro"?"What is this paper trying to do, and does it succeed?":"A short private note to the editor — the part the authors should not read.";
+  el.textContent="";el.append(ta);ta.focus();
+  let done=false;
+  const commit=()=>{if(done)return;done=true;S.report[k]=ta.value.trim();save();render();};
+  ta.addEventListener("blur",commit);
+  ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))commit();if(e.key==="Escape"){done=true;render();}e.stopPropagation();});
+  void s;
+}
+
+/* ---- polish networking (browser-direct, OpenAI-compatible) ---- */
+function normBase(v){return String(v||"").trim().replace(/\/+$/,"");}
+async function fetchModels(){
+  const base=normBase(S.polish.base),key=String(S.polish.key||"").trim();
+  if(!base){pstat("err","Name the API base URL first.");return;}
+  if(!key){pstat("err","Enter your API key first.");return;}
+  pstat("busy","Asking "+base+" for its model list…");save();
+  try{
+    if(S.polish.api==="gemini"){
+      const r=await fetch(base+"/models?key="+encodeURIComponent(key),{headers:{"x-goog-api-key":key}});
+      if(!r.ok){pstat("err","The endpoint answered "+r.status+". Check the base URL and the key.");save();return;}
+      const j=await r.json();
+      const ids=(j.models||[])
+        .filter(m=>m&&(!m.supportedGenerationMethods||m.supportedGenerationMethods.includes("generateContent")))
+        .map(m=>String(m.name||"").replace(/^models\//,"")).filter(Boolean).sort();
+      if(!ids.length){pstat("err","The endpoint returned no models.");save();return;}
+      S.polish.models=ids;S.polish.model=ids.includes(S.polish.model)?S.polish.model:ids[0];
+      pstat("ok",ids.length+" models found. Choose one, then polish.");
+      save();render();
+      return;
+    }
+    const r=await fetch(base+"/models",{headers:{Authorization:"Bearer "+key}});
+    if(!r.ok){pstat("err","The endpoint answered "+r.status+". Check the base URL and the key.");save();return;}
+    const j=await r.json();
+    const ids=(j.data||j.models||[]).map(m=>m&&(m.id||m.name)).filter(Boolean).sort();
+    if(!ids.length){pstat("err","The endpoint returned no models.");save();return;}
+    S.polish.models=ids;S.polish.model=ids.includes(S.polish.model)?S.polish.model:ids[0];
+    pstat("ok",ids.length+" models found. Choose one, then polish.");
+    save();render();
+  }catch(e){
+    pstat("err","The request did not complete — usually a wrong base URL or a blocked origin. "+String(e.message||""));save();
+  }
+}
+async function runPolish(){
+  const base=normBase(S.polish.base),key=String(S.polish.key||"").trim(),model=S.polish.model||"";
+  if(!base||!key||!model){pstat("err","Base URL, key, and model all need to be set.");return;}
+  pstat("busy","Sending your draft to "+model+"…");save();
+  hitEvent("polish","polish_run");
+  try{
+    if(S.polish.api==="gemini"){
+      const bare=model.replace(/^models\//,"");
+      const r=await fetch(base+"/models/"+bare+":generateContent?key="+encodeURIComponent(key),{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-goog-api-key":key},
+        body:JSON.stringify({
+          system_instruction:{parts:[{text:POLISH_SYS}]},
+          contents:[{role:"user",parts:[{text:draftText()}]}]})});
+      if(!r.ok){const t=await r.text().catch(()=>"");pstat("err","The endpoint answered "+r.status+". "+t.slice(0,200));save();return;}
+      const j=await r.json();
+      const parts=(j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[];
+      const out=parts.map(x=>x&&x.text).filter(Boolean).join("\n");
+      if(!out||!out.trim()){pstat("err","The endpoint returned an empty reply.");save();return;}
+      S.polish.out=out.trim();pstat("ok","Polished version received. Compare it against your draft below, then decide.");save();render();
+      return;
+    }
+    const body={model:model,messages:[{role:"system",content:POLISH_SYS},{role:"user",content:draftText()}],temperature:0.3};
+    const r=await fetch(base+"/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",Authorization:"Bearer "+key},
+      body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>"");pstat("err","The endpoint answered "+r.status+". "+t.slice(0,200));save();return;}
+    const j=await r.json();
+    const out=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:"";
+    if(!out||!out.trim()){pstat("err","The endpoint returned an empty reply.");save();return;}
+    S.polish.out=out.trim();pstat("ok","Polished version received. Compare it against your draft below, then decide.");save();render();
+  }catch(e){
+    pstat("err","The request did not complete — usually a wrong base URL, a blocked origin, or no network. "+String(e.message||""));save();
+  }
+}
+function applyPolished(){
+  const out=String(S.polish.out||"");if(!out){return;}
+  const grab=(re)=>{const m=out.match(re);return m?m[1].trim():"";};
+  const intro=grab(/##\s*Intro\s*\n([\s\S]*?)(?=\n##|\n*$)/i);
+  if(intro)S.report.intro=intro.replace(/^#+\s*/,"").trim();
+  const letter=grab(/##\s*Letter to the editor\s*\n([\s\S]*?)(?=\n##|\n*$)/i);
+  if(letter)S.report.letter=letter.trim();
+  /* rewrite report points by line anchor, in order of appearance */
+  const lines=[];const re=/\[L(\d+)\]\s*([^\n]+)/g;let m;
+  while((m=re.exec(out))!==null)lines.push({line:m[1],text:m[2].trim()});
+  live().forEach(n=>{
+    const hit=lines.find(x=>String(x.line)===String(n.line));
+    if(hit&&hit.text)n.text=hit.text.replace(/\s*\([^)]*\)\s*$/,"").trim();
+  });
+  S.polish.out="";save();render();
+  openModal("Applied","The polished text is now in the report. Every line is still editable there, so read it through before you submit.","Open the report",()=>{closeModal();go(5);});
+}
+
+/* ---- export: TXT and PDF download (the sheet, no print dialog) ---- */
+function reportFileName(ext){
+  const slug=(S.ms||"peer-review").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,48)||"peer-review";
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  return slug+"-"+d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"."+ext;
+}
+function saveTxt(){
+  const t=draftText()+"\nGenerated: "+new Date().toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"})+" · iAIMS reviewing tool\n";
+  try{
+    const blob=new Blob([t],{type:"text/plain;charset=utf-8"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=reportFileName("txt");
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{try{URL.revokeObjectURL(a.href);}catch(e){}a.remove();},400);
+    hitEvent("txt","report_txt");
+  }catch(e){
+    openModal("Could not save","The text file could not be generated in this browser. Use Copy report instead.","OK",closeModal);
+  }
+}
+function savePdf(){
+  if(!window.jspdf||!window.jspdf.jsPDF){
+    openModal("PDF library missing","The PDF library did not load (assets/jspdf.umd.min.js). Use Copy report or Save as TXT meanwhile.","OK",closeModal);return;}
+  try{
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:"mm",format:"a4"});
+  const W=210,H=297,ML=12,MR=12,MT=14,MB=14,CW=W-ML-MR;
+  const C={ultra:[27,47,208],ink:[20,23,26],ink2:[67,71,76],ink3:[107,112,117],
+    rule:[211,214,208],hair:[227,229,224],paper2:[235,235,230],
+    major:[200,54,31],majorW:[251,237,234],minor:[154,107,0],minorW:[251,243,224],
+    ok:[31,107,69],ai:[91,62,155],white:[255,255,255]};
+  const setF=c=>doc.setTextColor(c[0],c[1],c[2]);
+  const setFill=c=>doc.setFillColor(c[0],c[1],c[2]);
+  const setD=c=>doc.setDrawColor(c[0],c[1],c[2]);
+  const BOTTOM=H-MB-7;
+  let y=MT;
+  function footer(){
+    setD(C.hair);doc.setLineWidth(.2);doc.line(ML,H-MB-4,W-MR,H-MB-4);
+    doc.setFont("courier","normal");doc.setFontSize(7);setF(C.ink3);
+    doc.text("IAIMS REVIEWING TOOL",ML,H-MB-1.5,{charSpace:.4});
+    doc.text("PAGE "+doc.getCurrentPageInfo().pageNumber,W-MR,H-MB-1.5,{align:"right",charSpace:.4});
+  }
+  function newPage(){
+    footer();doc.addPage();
+    doc.setFont("helvetica","bold");doc.setFontSize(8);setF(C.ink3);
+    doc.text("PEER-REVIEW REPORT — CONTINUED",ML,MT,{charSpace:.5});
+    doc.setFont("courier","normal");doc.setFontSize(7.5);
+    doc.text(String(S.ms||"Untitled manuscript").slice(0,90),W-MR,MT,{align:"right"});
+    setD(C.rule);doc.setLineWidth(.3);doc.line(ML,MT+3,W-MR,MT+3);
+    y=MT+8;
+  }
+  const need=h=>{if(y+h>BOTTOM)newPage();};
+  function sectHead(title,tint,rightLabel){
+    need(16);
+    const bg=tint==="major"?C.majorW:tint==="minor"?C.minorW:C.paper2;
+    const fg=tint==="major"?C.major:tint==="minor"?C.minor:C.ink;
+    setFill(bg);setD(fg);doc.setLineWidth(.7);
+    const top=y;
+    doc.rect(ML,top,CW,6.6,"F");
+    doc.line(ML,top+6.6,W-MR,top+6.6);
+    doc.setFont("courier","bold");doc.setFontSize(8);setF(fg);
+    doc.text(title.toUpperCase(),ML+2.5,top+4.5,{charSpace:.7});
+    if(rightLabel)doc.text(rightLabel.toUpperCase(),W-MR-2.5,top+4.5,{align:"right",charSpace:.7});
+    y=top+11;
+  }
+  function subHead(s){
+    need(10);
+    doc.setFont("helvetica","bold");doc.setFontSize(7.5);setF(C.ink2);
+    doc.text(String(s).toUpperCase(),ML,y,{charSpace:.4});
+    y+=1.8;
+    setD(C.hair);doc.setLineWidth(.15);doc.line(ML,y,W-MR,y);
+    y+=3.2;
+  }
+  function point(refMain,refSub,text,ai,sev){
+    const rw=19,gap=3,tx=ML+rw+gap,tw=CW-rw-gap-(sev?13:0);
+    doc.setFont("helvetica","normal");doc.setFontSize(9);
+    const tLines=text?doc.splitTextToSize(String(text),tw):[""];
+    doc.setFont("courier","normal");doc.setFontSize(7);
+    const sLines=refSub?doc.splitTextToSize(String(refSub),rw):[];
+    const blockH=Math.max(tLines.length*4.1,3.4+sLines.length*3.1)+3.4;
+    need(blockH+4);
+    const top=y;
+    doc.setFont("courier","bold");doc.setFontSize(7.5);setF(C.ink);
+    doc.text(String(refMain),ML,top+3.4);
+    doc.setFont("courier","normal");doc.setFontSize(7);setF(ai?C.ai:C.ink3);
+    sLines.forEach((ln,i)=>doc.text(ln,ML,top+3.4+(i+1)*3.1));
+    setD(C.hair);doc.setLineWidth(.15);
+    doc.line(ML+rw,top+0.5,ML+rw,top+blockH-1.5);
+    doc.setFont("helvetica","normal");doc.setFontSize(9);setF(C.ink);
+    tLines.forEach((ln,i)=>doc.text(ln,tx,top+3.6+i*4.1));
+    if(sev){ /* severity never alone: solid block + literal code */
+      const code=sev==="major"?"MAJ":"MIN";
+      const col=sev==="major"?C.major:C.minor;
+      doc.setFont("courier","bold");doc.setFontSize(7.5);
+      const cw=doc.getTextWidth(code)+2.6;
+      const cx=W-MR-cw,cy=top+0.3;
+      setFill(col);doc.rect(cx,cy,cw,4.6,"F");
+      setF(C.white);doc.text(code,cx+1.3,cy+3.3);
+    }
+    y=top+blockH;
+    setD(C.hair);doc.setLineWidth(.15);doc.line(ML,y,W-MR,y);
+  }
+  function recRow(){
+    need(24);
+    const recs=[["accept","Accept","As it stands"],["minor","Minor revision","Fixable at revision"],
+      ["major","Major revision","Substantive rework"],["reject","Reject","Not salvageable"]];
+    const cw=CW/4,ch=16,top=y;
+    recs.forEach((r,i)=>{
+      const x=ML+i*cw,on=S.rec===r[0];
+      if(on){setFill(C.ink);setD(C.ink);doc.rect(x,top,cw,ch,"FD");setF(C.white);}
+      else{setFill(C.white);setD(C.rule);doc.rect(x,top,cw,ch,"FD");setF(C.ink);}
+      doc.setFont("helvetica","bold");doc.setFontSize(9.5);
+      doc.text(r[1],x+2.5,top+6.5);
+      doc.setFont("courier","normal");doc.setFontSize(6.5);
+      setF(on?[157,162,168]:C.ink3);
+      doc.text(r[2].toUpperCase(),x+2.5,top+11.5,{charSpace:.3});
+    });
+    setD(C.ink);doc.setLineWidth(.4);doc.rect(ML,top,CW,ch,"S");
+    y=top+ch+5;
+  }
+  /* full-bleed ultramarine band — the sheet's head, as on screen */
+  const REC_NAME={accept:"ACCEPT",minor:"MINOR REVISION",major:"MAJOR REVISION",reject:"REJECT"};
+  setFill(C.ultra);doc.rect(0,0,W,11,"F");
+  doc.setFont("courier","bold");doc.setFontSize(8);setF(C.white);
+  doc.text("PEER-REVIEW REPORT",ML,7,{charSpace:.7});
+  doc.text(String(REC_NAME[S.rec]||"NO RECOMMENDATION SET"),W-MR,7,{align:"right",charSpace:.7});
+  y=MT+6;
+  doc.setFont("helvetica","bold");doc.setFontSize(21);setF(C.ink);
+  doc.text("Peer-review report",ML,y);y+=9;
+  doc.setFont("courier","normal");doc.setFontSize(8);setF(C.ink3);
+  doc.text(String(S.ms||"Untitled manuscript")+"  ·  "+(aiOn()?"AI CHECKLIST RUN":"NO AI CHECKLIST"),ML,y,{charSpace:.3});
+  y+=3;
+  setD(C.rule);doc.setLineWidth(.3);doc.line(ML,y,W-MR,y);y+=7;
+  const {g}=groups();
+  sectHead("Overall impression",null);
+  if(S.report.intro){
+    doc.setFont("helvetica","normal");doc.setFontSize(9.5);setF(C.ink);
+    doc.splitTextToSize(S.report.intro,CW).forEach(ln=>{need(4.5);doc.text(ln,ML,y);y+=4.3;});
+  }else{
+    doc.setFont("helvetica","italic");doc.setFontSize(9.5);setF(C.ink3);
+    doc.text("No overall impression written.",ML,y);y+=5;
+  }
+  y+=4;
+  const block=(title,sev,obj)=>{
+    let any=false;
+    sectionsList().forEach(sec=>{
+      const arr=obj[sec]||[],ai=aiConcerns(sev).filter(x=>(x.t.sec||"Methods")===sec);
+      if(!arr.length&&!ai.length)return;
+      if(!any){sectHead(title,sev,sev);any=true;}
+      need(12);subHead(sec);
+      arr.forEach(n=>point(lineLabel(n),n.section||"",n.text,false,sev));
+      ai.forEach(({t,a})=>point(t.code||t.id,String(a.val||"").toUpperCase(),t.q+(a.note?" — "+a.note:""),true,sev));
+    });
+  };
+  block("Major concerns","major",g.major);
+  block("Minor points","minor",g.minor);
+  const ps=aiPassed();
+  if(aiOn()&&ps.length){
+    sectHead("AI checklist checks passed",null);
+    ps.forEach(t=>{
+      const ls=doc.splitTextToSize("✓ "+(t.code||t.id)+" — "+t.q,CW-4);
+      ls.forEach(ln=>{need(4.4);doc.setFont("courier","normal");doc.setFontSize(8);setF(C.ok);doc.text(ln,ML+2,y);y+=4.0;});
+    });
+    y+=4;
+  }
+  /* Recommendation. The letter to the editor is deliberately not in the PDF. */
+  sectHead("Recommendation",null);
+  recRow();
+  footer();
+  hitEvent("pdf","report_pdf");
+  doc.save(reportFileName("pdf"));
+  }catch(e){
+    openModal("PDF failed","The PDF could not be generated: "+String((e&&e.message)||e).slice(0,160),"OK",closeModal);
+  }
+}
+
+/* ---- nav, glossary, stats, reset ---- */
+function go(n){S.step=Math.min(6,Math.max(1,n));save();render();
+  try{const F=$("#field");const y=F.getBoundingClientRect().top+window.scrollY-70;window.scrollTo({top:y,behavior:"smooth"});}catch(e){}}
+function openGlossary(){
+  openModal("AI Glossary",
+   "<div class='f'><label for='gq'>Search terms</label><input class='inp' id='gq' placeholder='e.g. leakage, calibration, bias' autocomplete='off'></div>"+
+   "<div class='gloss-list' id='glist'>"+GLOSSARY.map(g=>"<div class='gloss' data-g><p class='gloss-term'>"+esc(g[0])+"</p><p class='gloss-def'>"+esc(g[1])+"</p></div>").join("")+"</div>",
+   "Done",closeModal);
+  const q=$("#gq");
+  if(q){q.addEventListener("input",()=>{const s=q.value.toLowerCase();
+    document.querySelectorAll("#mbody [data-g]").forEach(d=>{d.hidden=s&&d.textContent.toLowerCase().indexOf(s)<0;});});
+    setTimeout(()=>q.focus(),60);}
+}
+$("#ms").value=S.ms||"";
+$("#ms").addEventListener("input",e=>{S.ms=e.target.value;save();});
+$("#btn-prev").addEventListener("click",()=>go(S.step-1));
+$("#btn-next").addEventListener("click",()=>go(S.step+1));
+$("#btn-gloss").addEventListener("click",openGlossary);
+$("#btn-reset").addEventListener("click",()=>{
+  openModal("Clear this review?",
+    "<p style='margin:0 0 6px;font-size:13.5px;color:var(--ink-2)'>This clears the readings, tags, checklist answers, report, and polish settings held in this browser. It cannot be undone.</p>"+
+    "<div class='f' style='margin-top:14px'><label for='delph'>Type <b style='color:var(--major)'>DELETE</b> to confirm</label>"+
+    "<input class='inp' id='delph' autocomplete='off' spellcheck='false' placeholder='DELETE'></div>",
+    "Clear everything",()=>{
+      const v=String(($("#delph")||{}).value||"").trim().toUpperCase();
+      if(v!=="DELETE"){const d=$("#delph");if(d){d.focus();d.style.borderColor="var(--major)";}return;}
+      S=base();try{localStorage.removeItem(KEY);}catch(e){}
+      $("#ms").value="";save();render();closeModal();go(1);});
+  const dph=$("#delph");
+  if(dph){
+    $("#mconfirm").disabled=true;
+    dph.addEventListener("input",()=>{$("#mconfirm").disabled=dph.value.trim().toUpperCase()!=="DELETE";});
+    setTimeout(()=>dph.focus(),50);
+  }});
+
+/* heal any legacy api/provider mismatch: a preset provider always owns its dialect */
+{
+  const pr=PROVIDERS.find(x=>x.id===S.polish.provider);
+  if(pr){
+    if(normBase(S.polish.base)!==pr.base)S.polish.provider="";
+    else S.polish.api=pr.api;
+  }
+}
+render();save();loadTpl();statVisit();
+})();
+</script>
+</body>
+</html>

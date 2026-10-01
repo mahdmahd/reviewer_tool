@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ai-test-set",
+    "q": "Did they keep a proper held-out test set for the model?",
+    "hint": "Look for train / validation / test split, no leakage of test into tuning.",
+    "severity": "major",
+    "section": "Methods"
+  },
+  {
+    "id": "ai-leakage",
+    "q": "Did they rule out data leakage (patients, scanners, time)?",
+    "hint": "Same patient or site in train and test inflates performance.",
+    "severity": "major",
+    "section": "Methods"
+  },
+  {
+    "id": "ai-external",
+    "q": "Is there external validation on an independent cohort?",
+    "hint": "Single-centre only = higher risk of overfitting.",
+    "severity": "major",
+    "section": "Results"
+  },
+  {
+    "id": "ai-metrics",
+    "q": "Are the metrics appropriate with confidence intervals?",
+    "hint": "AUC / sensitivity / specificity / calibration — with CIs, not point estimates alone.",
+    "severity": "major",
+    "section": "Methods"
+  },
+  {
+    "id": "ai-baseline",
+    "q": "Did they compare against a sensible baseline or clinicians?",
+    "hint": "No baseline makes claimed gains uninterpretable.",
+    "severity": "minor",
+    "section": "Discussion"
+  },
+  {
+    "id": "ai-transparency",
+    "q": "Are data, code and model details shared enough to reproduce?",
+    "hint": "Dataset access, preprocessing, hyperparameters, random seeds.",
+    "severity": "minor",
+    "section": "Methods"
+  },
+  {
+    "id": "ai-failure",
+    "q": "Did they analyse failures, subgroups and fairness?",
+    "hint": "Error cases, subgroup performance, bias across sex / age / site.",
+    "severity": "major",
+    "section": "Results"
+  },
+  {
+    "id": "ai-claim",
+    "q": "Do the clinical claims match what was actually tested?",
+    "hint": "Watch for overreach from retrospective AUC to bedside benefit.",
+    "severity": "major",
+    "section": "Discussion"
+  }
+]

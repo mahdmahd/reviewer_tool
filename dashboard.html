@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en" data-grid="on">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iAIMS — Usage dashboard</title>
+<meta name="description" content="Local usage statistics for the iAIMS reviewing tool. Everything on this page is read from this browser and nothing is fetched." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="assets/iaims-icon-apple.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Geist:wght@300..700&family=Geist+Mono:wght@300..600&display=swap" rel="stylesheet">
+<style>
+/* iAIMS usage dashboard — the same construction-grid world, as a readout sheet */
+:root{
+  --paper:#F4F4F1; --paper-2:#EBEBE6; --card:#FAFAF7;
+  --ink:#14171A; --ink-2:#43474C; --ink-3:#6B7075;
+  --rule:#D3D6D0; --hair:#E3E5E0; --rule-strong:#14171A;
+  --ultra:#1B2FD0; --ultra-ink:#0E1A80; --ultra-wash:#E8EAFB;
+  --major:#C8361F; --major-wash:#FBEDEA;
+  --minor:#9A6B00; --minor-wash:#FBF3E0;
+  --ok:#1F6B45; --ai:#5B3E9B;
+  --f-display:'Anybody',ui-sans-serif,system-ui,sans-serif;
+  --f-text:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --f-mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --mod:28px;
+  --gut:clamp(16px,3.2vw,40px);
+  --maxw:1080px;
+  --t-fast:120ms;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-text);font-size:15.5px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;caret-color:var(--ultra);
+}
+::selection{background:var(--ultra-wash)}
+.lattice{
+  position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.6;
+  background-image:
+    linear-gradient(to right,var(--hair) 1px,transparent 1px),
+    linear-gradient(to bottom,var(--hair) 1px,transparent 1px);
+  background-size:var(--mod) var(--mod);
+}
+html[data-grid="off"] .lattice{opacity:0}
+.lattice{transition:opacity 220ms linear}
+.skip{position:absolute;left:-9999px;top:0}
+.skip:focus{left:var(--gut);top:8px;z-index:20;background:var(--ultra);color:#fff;padding:10px 16px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding-inline:var(--gut);position:relative;z-index:1}
+
+/* masthead */
+.masthead{border-bottom:1px solid var(--rule-strong);padding-top:22px}
+.masthead .wrap{display:flex;align-items:flex-end;gap:clamp(16px,3vw,40px);flex-wrap:wrap;padding-bottom:14px}
+.brand{display:flex;align-items:center;gap:13px;flex:none}
+.brand-logo{width:58px;height:58px;flex:none;display:block;object-fit:contain}
+.brand-name{font-family:var(--f-display);font-size:26px;font-weight:800;font-variation-settings:'wdth' 112;letter-spacing:-.02em;line-height:.9}
+.brand-sub{font-family:var(--f-text);font-size:11px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-top:3px}
+.masthead .spacer{flex:1 1 auto}
+
+/* field head */
+.field{padding-block:36px 48px}
+.head{display:flex;gap:22px;align-items:baseline;margin-bottom:26px}
+.head-title{
+  font-family:var(--f-display);font-size:clamp(27px,4vw,42px);font-weight:800;
+  font-variation-settings:'wdth' 78;letter-spacing:-.032em;line-height:.92;margin:0 0 10px;
+  text-wrap:balance;
+}
+.head-desc{margin:0;max-width:62ch;color:var(--ink-2)}
+.hrule{border:0;border-top:1px solid var(--rule-strong);margin:0 0 22px}
+
+/* measurement figures — the tool's own readout grammar */
+.figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));border:1px solid var(--rule-strong);border-right:0;border-bottom:0;background:var(--card);margin-bottom:22px}
+.fig{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:13px 14px}
+.fig .n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:30px;font-weight:600;line-height:1;letter-spacing:-.03em}
+.fig .l{font-family:var(--f-text);font-weight:500;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+
+/* ruled definition table */
+.sheet{border:1px solid var(--rule-strong);border-bottom:0;background:var(--card);margin-bottom:22px}
+.sheet-h{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);
+  background:var(--ink);border-bottom:1px solid var(--rule-strong);
+}
+.sheet-h span{font-family:var(--f-text);font-weight:600;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--paper);padding:10px 12px}
+.sheet-h span+span{border-left:1px solid #33383d}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);border-bottom:1px solid var(--rule)}
+.row .k{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+  padding:11px 12px;border-right:1px solid var(--hair);display:flex;align-items:center;
+}
+.row .v{font-family:var(--f-text);font-size:14px;padding:11px 12px;display:flex;align-items:center;gap:8px;overflow-wrap:anywhere}
+.row .v .m{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.03em}
+
+/* severity and status marks */
+.sevtag{
+  font-family:var(--f-mono);font-weight:600;font-size:9.5px;letter-spacing:.1em;
+  padding:2px 6px;border:1px solid currentColor;text-transform:uppercase;
+}
+.sevtag[data-s="major"]{color:#fff;background:var(--major);border-color:var(--major)}
+.sevtag[data-s="minor"]{color:#fff;background:var(--minor);border-color:var(--minor)}
+.sevtag[data-s="none"]{color:var(--ink-3);background:transparent}
+
+/* notes */
+.note-blk{border:1px solid var(--rule);background:var(--card);padding:14px 15px;font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:22px}
+.note-blk b{color:var(--ink)}
+.privacy{border:1px solid var(--ok);background:#F2F7F3;padding:15px 16px;font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:22px}
+.privacy b{color:var(--ok);font-family:var(--f-text);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:5px}
+
+/* actions */
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px}
+.btn{
+  font-family:var(--f-text);font-size:13.5px;font-weight:600;letter-spacing:-.005em;
+  border:1px solid var(--ink);background:var(--ultra);color:#fff;
+  padding:10px 18px;cursor:pointer;transition:all var(--t-fast) linear;white-space:nowrap;
+  text-decoration:none;display:inline-block;
+}
+.btn:hover{background:var(--ultra-ink);border-color:var(--ultra-ink)}
+.btn.sec{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.sec:hover{background:var(--paper-2);border-color:var(--ink)}
+
+/* foot */
+.foot{border-top:1px solid var(--rule);padding:16px 0 30px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.meta{font-family:var(--f-mono);font-size:11px;letter-spacing:.03em;color:var(--ink-3);margin:0}
+.foot button{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;background:transparent;
+  border:1px solid var(--rule);color:var(--ink-2);padding:8px 12px;cursor:pointer;transition:all var(--t-fast) linear;
+}
+.foot button:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-2)}
+
+.empty{border:1px dashed var(--rule);padding:18px 16px;color:var(--ink-3);font-size:13.5px;line-height:1.6}
+
+@media(max-width:620px){
+  .head{flex-direction:column;gap:8px}
+  .row,.sheet-h{grid-template-columns:1fr}
+  .row .k{border-right:0;border-bottom:1px solid var(--hair);padding-bottom:4px}
+  .sheet-h span+span{border-left:0;border-top:1px solid #33383d}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media print{
+  .lattice,.masthead .skip,.acts,.foot button{display:none!important}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="lattice" aria-hidden="true"></div>
+<a class="skip" href="#field">Skip to the figures</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="brand">
+      <img class="brand-logo" src="assets/iaims-icon-apple.svg" alt="iAIMS" width="110" height="110">
+      <div>
+        <div class="brand-name">iAIMS</div>
+        <div class="brand-sub">Usage dashboard</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <a class="btn sec" href="index.html">Back to the tool</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="field" id="field">
+    <div class="head">
+      <div>
+        <h1 class="head-title">What this browser has recorded</h1>
+        <p class="head-desc">Every figure below is read from this browser's own storage when the page opened. Nothing on this page is fetched, uploaded, or shared — close it and it re-reads the same local counters.</p>
+      </div>
+    </div>
+    <hr class="hrule">
+
+    <div class="figures" id="figs" aria-label="Usage figures"></div>
+
+    <div class="sheet" id="review-sheet" aria-label="Current review state"></div>
+
+    <div class="privacy"><b>What leaves this device</b>Only anonymous pageview and event counts are beamed to GoatCounter (pageviews, unique visitors via IP-hash, countries, referrers, and report events — PDF and TXT saves, copies, polish and checklist runs). Review content never leaves this device. <b>The manuscript does not.</b></div>
+
+    <div class="note-blk" id="device-note"></div>
+
+    <div class="acts">
+      <a class="btn" href="index.html">Open the reviewing tool</a>
+      <a class="btn sec" href="https://iaimsreviewtool2026.goatcounter.com" target="_blank" rel="noopener">Open GoatCounter ↗</a>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <p class="meta">Readings stay in this browser. Nothing is uploaded.</p>
+    <button type="button" id="btn-grid">Grid on</button>
+  </div>
+</footer>
+
+<script>
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const fmt=t=>t?new Date(t).toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"}):"—";
+
+const SKEY="iaims-stats-v1", RKEY="iaims-review-v3";
+const STEPS={1:"01 Invite",2:"02 First read",3:"03 Second read",4:"04 AI Checklist",5:"05 Report",6:"06 AI polishing"};
+
+let STAT={visits:0,pdf:0,txt:0,copy:0,polish:0,checklist:0,first:0,last:0};
+try{const r=localStorage.getItem(SKEY);if(r)STAT=Object.assign(STAT,JSON.parse(r)||{});}catch(e){}
+let S=null;
+try{const r=localStorage.getItem(RKEY);if(r)S=JSON.parse(r);}catch(e){}
+
+/* usage figures — measurement cells, tabular numerals */
+const rows=[["Visits",STAT.visits||0],["PDF saves",STAT.pdf||0],["TXT saves",STAT.txt||0],
+  ["Copies",STAT.copy||0],["Polish runs",STAT.polish||0],["Checklist runs",STAT.checklist||0]];
+$("#figs").innerHTML=rows.map(r=>
+  '<div class="fig"><div class="n">'+r[1]+'</div><div class="l">'+esc(r[0])+'</div></div>').join("");
+
+/* current review state — the one label schema, on a readout sheet */
+const sevTag=(s,label)=>s==="major"?'<span class="sevtag" data-s="major">'+label+'</span>'
+  :s==="minor"?'<span class="sevtag" data-s="minor">'+label+'</span>'
+  :'<span class="sevtag" data-s="none">'+label+'</span>';
+function reviewRows(){
+  const head='<div class="sheet-h"><span>Current review</span><span>State</span></div>';
+  if(!S){
+    return head+'<div class="row"><div class="k">Review</div><div class="v"><span class="m">No review held in this browser yet.</span></div></div>';
+  }
+  const notes=S.notes||[];
+  const live=notes.filter(n=>n.status!=="rejected");
+  const sevOf=n=>{if(n.stamp)return n.stamp;if(n.severity)return n.severity;
+    const t=s=>((S.customTags||[]).find(x=>x.name===s)||{}).sev||({typo:"minor","grammar / language":"minor",formatting:"minor","reference style":"minor","figure / table clarity":"minor","methodological concern":"major","statistical issue":"major","data concern":"major","interpretation overreach":"major","novelty / originality":"major",ethics:"major"}[s]||"");
+    const ts=n.tags||[];if(ts.some(x=>t(x)==="major"))return"major";if(ts.some(x=>t(x)==="minor"))return"minor";return"";};
+  const maj=live.filter(n=>sevOf(n)==="major").length;
+  const min=live.filter(n=>sevOf(n)==="minor").length;
+  const un=live.filter(n=>!sevOf(n)).length;
+  const rj=notes.length-live.length;
+  const ai=S.ai&&S.ai.on===true?"Run":S.ai&&S.ai.on===false?"Skipped":"Not opened";
+  const REC={accept:"Accept",minor:"Minor revision",major:"Major revision",reject:"Reject"};
+  const body=[
+    ["Manuscript",'<b>'+esc(S.ms||"Untitled manuscript")+'</b>'],
+    ["Readings",notes.length+' total · '+live.length+' live · '+rj+' struck'],
+    ["Severity",sevTag("major","MAJ "+maj)+" "+sevTag("minor","MIN "+min)+" "+sevTag("","untagged "+un)],
+    ["Sections",(S.sections||[]).map(esc).join(", ")||"—"],
+    ["AI checklist",esc(ai)],
+    ["Recommendation",S.rec?esc(REC[S.rec]||S.rec):'<span class="m">Not set</span>'],
+    ["Station",esc(STEPS[S.step]||"—")]
+  ].map(r=>'<div class="row"><div class="k">'+r[0]+'</div><div class="v">'+r[1]+'</div></div>').join("");
+  return head+body;
+}
+$("#review-sheet").innerHTML=reviewRows();
+
+$("#device-note").innerHTML="<b>This device.</b> First seen "+esc(fmt(STAT.first))+", last activity "+esc(fmt(STAT.last))+
+  ". These counters live in this browser only — clearing site data resets them.";
+
+/* the lattice is a real state, as on the tool */
+const btn=$("#btn-grid");
+const gridOff=()=>document.documentElement.getAttribute("data-grid")==="off";
+btn.textContent=gridOff()?"Grid off":"Grid on";
+btn.addEventListener("click",()=>{
+  document.documentElement.setAttribute("data-grid",gridOff()?"on":"off");
+  btn.textContent=gridOff()?"Grid off":"Grid on";
+});
+})();
+</script>
+</body>
+</html>

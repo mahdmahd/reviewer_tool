@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en" data-grid="on">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iAIMS Reviewing tool — peer review of healthcare-AI papers</title>
+<meta name="description" content="Structured peer review that saves time. Capture line-anchored readings, mark them Major or Minor, and hand back a report you would sign." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="assets/iaims-icon-apple.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Geist:wght@300..700&family=Geist+Mono:wght@300..600&display=swap" rel="stylesheet">
+<script data-goatcounter="https://iaimsreviewtool2026.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<style>
+/* iAIMS landing — construction-grid world. Same armature as the tool. */
+:root{
+  --paper:#F4F4F1; --paper-2:#EBEBE6; --card:#FAFAF7;
+  --ink:#14171A; --ink-2:#43474C; --ink-3:#6B7075;
+  --rule:#D3D6D0; --hair:#E3E5E0;
+  --ultra:#1B2FD0; --ultra-ink:#0E1A80; --ultra-wash:#E8EAFB;
+  --major:#C8361F; --major-wash:#FBEDEA;
+  --minor:#9A6B00; --minor-wash:#FBF3E0;
+  --ai:#5B3E9B; --ok:#1F6B45;
+  --f-display:'Anybody',ui-sans-serif,system-ui,sans-serif;
+  --f-text:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --f-mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --mod:28px; --gut:clamp(18px,3.4vw,48px); --maxw:1320px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-text);font-size:16.5px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;caret-color:var(--ultra)}
+.lattice{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(to right,var(--hair) 0 1px,transparent 1px var(--mod)),
+    repeating-linear-gradient(to bottom,var(--hair) 0 1px,transparent 1px var(--mod));
+  opacity:.6;transition:opacity 220ms cubic-bezier(.16,1,.3,1)}
+html[data-grid="off"] .lattice{opacity:0}
+::selection{background:var(--ultra);color:#fff}
+:focus-visible{outline:2px solid var(--ultra);outline-offset:2px}
+a{color:var(--ultra-ink);text-underline-offset:3px;text-decoration-thickness:1px}
+::-webkit-scrollbar{width:11px}
+::-webkit-scrollbar-track{background:var(--paper-2)}
+::-webkit-scrollbar-thumb{background:var(--rule);border:3px solid var(--paper-2)}
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin-inline:auto;padding-inline:var(--gut)}
+.skip{position:absolute;left:var(--gut);top:-80px;z-index:80;background:var(--ink);color:var(--paper);padding:12px 18px;font-family:var(--f-mono);font-size:12px}
+.skip:focus{top:8px}
+
+/* ---------- masthead ---------- */
+.masthead{border-bottom:1px solid var(--ink);padding-top:20px}
+.masthead .wrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding-bottom:13px}
+.brand{display:flex;align-items:center;gap:13px}
+.brand-logo{width:54px;height:54px;flex:none;display:block;object-fit:contain}
+.brand-name{font-family:var(--f-display);font-size:25px;font-weight:800;font-variation-settings:'wdth' 112;letter-spacing:-.02em;line-height:.9}
+.brand-sub{font-family:var(--f-text);font-size:12px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-top:3px}
+.nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.nav a{font-family:var(--f-text);font-size:13px;font-weight:500;color:var(--ink-2);text-decoration:none;padding:9px 13px}
+.nav a:hover{background:var(--paper-2);color:var(--ink)}
+.nav a.btn{color:#fff}
+.nav a.btn:hover{color:#fff;background:var(--ultra-ink);border-color:var(--ultra-ink)}
+.btn{
+  font-family:var(--f-text);font-size:13.5px;font-weight:600;letter-spacing:-.005em;
+  border:1px solid var(--ink);background:var(--ultra);color:#fff;padding:11px 20px;
+  cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:9px;
+  transition:all 120ms linear;
+}
+.btn:hover{background:var(--ultra-ink);border-color:var(--ultra-ink)}
+.btn.sec{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.sec:hover{background:var(--paper-2);border-color:var(--ink)}
+.btn.sm{padding:9px 15px;font-size:12.5px}
+
+/* ---------- the opening: a working sheet, not a hero ---------- */
+.opening{border-bottom:1px solid var(--ink);padding:clamp(40px,6.2vw,78px) 0 clamp(44px,6.4vw,82px)}
+.opening-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);gap:clamp(28px,4.4vw,64px);align-items:start}
+@media(max-width:940px){.opening-grid{grid-template-columns:1fr;gap:34px}}
+.display{
+  font-family:var(--f-display);font-weight:800;
+  font-size:clamp(42px,7.1vw,88px);line-height:.86;letter-spacing:-.032em;
+  font-variation-settings:'wdth' 78;margin:0 0 22px;text-wrap:balance;
+}
+.display em{font-style:normal;font-variation-settings:'wdth' 128;font-weight:600;letter-spacing:-.03em}
+.lead{font-size:clamp(17px,1.7vw,20px);line-height:1.55;color:var(--ink-2);max-width:52ch;margin:0 0 28px}
+.cta-row{display:flex;gap:11px;flex-wrap:wrap;align-items:center}
+.cta-note{font-family:var(--f-text);font-size:13px;color:var(--ink-2);margin:16px 0 0}
+
+/* ---------- the example output: a real report, scrollable ---------- */
+.pdfprev{border:1px solid var(--ink);background:var(--card)}
+.pdfprev-band{background:var(--ink);color:var(--paper);padding:11px 15px;display:flex;justify-content:space-between;gap:12px;font-family:var(--f-text);font-size:12px;font-weight:600;letter-spacing:.11em;text-transform:uppercase}
+.pdfprev-band span:last-child{color:#C8CCD1;font-weight:500}
+.pdfprev-stage{
+  background:var(--paper-2);padding:18px 18px 22px;
+  max-height:clamp(430px,62vh,640px);overflow-y:auto;
+}
+.pdfpage+.pdfpage{margin-top:16px}
+.pdfprev-cap{font-family:var(--f-mono);font-size:11px;letter-spacing:0;color:var(--ink-2);text-align:center;padding-top:14px}
+.pdfpage{background:#fff;border:1px solid var(--rule);width:100%;aspect-ratio:210/297;overflow:hidden;padding:6.5% 7%;display:flex;flex-direction:column;position:relative}
+.pp-band{background:var(--ultra);color:#fff;padding:5px 8px;display:flex;justify-content:space-between;gap:8px;font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.pp-title{font-family:var(--f-display);font-size:19px;font-weight:700;font-variation-settings:'wdth' 92;letter-spacing:-.03em;margin:11px 0 2px;color:var(--ink)}
+.pp-meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);margin:0 0 9px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.pp-sect{margin-bottom:9px}
+.pp-h{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;padding:3px 5px;background:var(--paper-2);border-bottom:1.5px solid var(--ink);display:flex;justify-content:space-between;margin:0 0 5px}
+.pp-h[data-s="major"]{background:var(--major-wash);border-bottom-color:var(--major);color:var(--major)}
+.pp-h[data-s="minor"]{background:var(--minor-wash);border-bottom-color:var(--minor);color:var(--minor)}
+.pp-sub{font-family:var(--f-text);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:7px 0 3px;padding-bottom:2px;border-bottom:1px solid var(--hair)}
+.pp-line{display:grid;grid-template-columns:88px minmax(0,1fr);border-bottom:1px solid var(--hair);font-size:11px;line-height:1.5}
+.pp-line:last-child{border-bottom:0}
+.pp-ref{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);border-right:1px solid var(--hair);padding:4px 5px 4px 0;font-variant-numeric:tabular-nums}
+.pp-ref b{display:block;color:var(--ink);font-size:11px;font-weight:600}
+.pp-txt{padding:4px 6px;color:var(--ink)}
+.pp-txt .mini{display:inline-block;font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 3px;margin-left:4px;vertical-align:1px}
+.pp-txt .mini[data-s="major"]{background:var(--major);color:#fff}
+.pp-txt .mini[data-s="minor"]{background:var(--minor);color:#fff}
+.pp-p{font-size:11px;line-height:1.55;color:var(--ink);margin:0 0 4px}
+.pp-recs{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ink);margin-top:8px}
+.pp-rec{border-right:1px solid var(--rule);padding:5px 6px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.pp-rec:last-child{border-right:0}
+.pp-rec:only-child{grid-column:1/-1}
+.pp-rec b{display:block;font-family:var(--f-display);font-size:14px;font-weight:700;letter-spacing:-.01em;text-transform:none;color:var(--ink);margin-bottom:2px}
+.pp-rec[data-checked="true"]{background:var(--ink)}
+.pp-rec[data-checked="true"] b{color:var(--paper)}
+.pp-rec[data-checked="true"]{color:#9DA2A8}
+.pp-foot{margin-top:auto;padding-top:6px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--ink-2);text-transform:uppercase}
+@media(max-width:620px){.pdfpage{aspect-ratio:auto;min-height:340px}}
+
+/* ---------- sections ---------- */
+section.band{border-bottom:1px solid var(--rule);padding:clamp(44px,5.9vw,78px) 0 clamp(48px,6.2vw,84px)}
+.sec-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(22px,3.6vw,54px);align-items:end;margin-bottom:clamp(26px,3.4vw,42px)}
+@media(max-width:820px){.sec-head{grid-template-columns:1fr;gap:14px}}
+.sec-title{font-family:var(--f-display);font-size:clamp(28px,3.7vw,46px);font-weight:700;font-variation-settings:'wdth' 96;letter-spacing:-.032em;line-height:1.02;margin:0;text-wrap:balance}
+.sec-note{font-size:16px;color:var(--ink-2);max-width:58ch;margin:0}
+
+/* the six stations, as a ruled strip — one ground for all */
+.stations{display:grid;grid-template-columns:repeat(6,1fr);border:1px solid var(--ink);border-right:0;background:var(--card)}
+@media(max-width:1080px){.stations{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:620px){.stations{grid-template-columns:repeat(2,1fr)}}
+.station{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:18px 15px 20px;min-height:172px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.station-n{font-family:var(--f-mono);font-size:12px;color:var(--ink-3);letter-spacing:.06em}
+.station-t{font-family:var(--f-display);font-size:19px;font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.018em;margin:0}
+.station-d{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin:0}
+.station-opt{margin-top:auto;font-family:var(--f-text);font-size:12px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.station[data-span="1"]{grid-column:1/-1;border-right:1px solid var(--rule);min-height:0}
+.station .glossmark{font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ai)}
+
+/* the two polish routes, as an instrument readout */
+.routes{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink);border-right:0;background:var(--card)}
+@media(max-width:820px){.routes{grid-template-columns:1fr}}
+.route{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:clamp(24px,3vw,34px);display:flex;flex-direction:column;gap:11px}
+.route-t{font-family:var(--f-display);font-size:clamp(21px,2.3vw,27px);font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.022em;margin:0}
+.route-d{font-size:15px;color:var(--ink-2);line-height:1.55;margin:0}
+.route-spec{margin:10px 0 4px;border-top:1px solid var(--hair);padding:12px 0 6px;display:flex;flex-direction:column;gap:8px}
+.route-spec span{font-family:var(--f-text);font-size:13px;color:var(--ink-2);display:flex;gap:8px}
+.route-spec span::before{content:"›";color:var(--ultra)}
+
+/* confidentiality barrier */
+.barrier{border:1px solid var(--ok);background:#F1F7F3;padding:clamp(24px,3.1vw,36px);display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(18px,2.6vw,32px);align-items:start;margin-top:clamp(24px,3vw,36px)}
+@media(max-width:720px){.barrier{grid-template-columns:1fr}}
+.barrier-mark{width:76px;height:76px;border:1px solid var(--ok);display:grid;place-items:center;flex:none}
+.barrier-mark svg{width:42px;height:42px}
+.barrier h3{font-family:var(--f-display);font-size:clamp(19px,2.1vw,24px);font-weight:700;font-variation-settings:'wdth' 100;letter-spacing:-.018em;margin:0 0 9px;color:var(--ink)}
+.barrier p{margin:0 0 9px;font-size:15px;line-height:1.6;color:var(--ink-2);max-width:64ch}
+.barrier p:last-child{margin-bottom:0}
+
+footer{border-top:1px solid var(--ink);padding-block:22px}
+footer .wrap{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:center}
+footer p{margin:0;font-family:var(--f-text);font-size:12.5px;color:var(--ink-2);letter-spacing:.01em}
+footer .fnav{display:flex;gap:16px;flex-wrap:wrap}
+footer .fnav a{font-family:var(--f-text);font-size:12.5px;color:var(--ink-2);text-decoration:none}
+footer .fnav a:hover{color:var(--ink)}
+
+/* one authored motion: the example report's pages arrive as you reach them */
+@media(prefers-reduced-motion:no-preference){
+  .pdfpage{opacity:.3;transform:translateY(8px);transition:opacity 520ms cubic-bezier(.16,1,.3,1),transform 520ms cubic-bezier(.16,1,.3,1)}
+  .pdfpage.seen{opacity:1;transform:none}
+}
+@media(prefers-reduced-motion:reduce){.pdfpage{opacity:1!important;transform:none!important}}
+@media(max-width:620px){
+  .station{min-height:0}
+}
+</style>
+</head>
+<body>
+<div class="lattice" aria-hidden="true"></div>
+<a class="skip" href="#open">Skip to content</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="brand">
+      <img class="brand-logo" src="assets/iaims-icon-apple.svg" alt="iAIMS" width="110" height="110">
+      <div>
+        <div class="brand-name">iAIMS</div>
+        <div class="brand-sub">Reviewing tool</div>
+      </div>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <a href="#method">Method</a>
+      <a href="#genai">Generative AI</a>
+      <a href="index.html" class="btn sm">Start a review →</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="opening" id="open">
+  <div class="wrap opening-grid">
+    <div>
+      <h1 class="display">Structured<br>peer review<br>that <em>saves time.</em></h1>
+      <p class="lead">You have a manuscript in one window and an hour between clinics. This instrument holds the method (line numbers, sections, severity, the AI checklist) so your attention stays on the science.</p>
+      <div class="cta-row">
+        <a class="btn" href="index.html">Start a review →</a>
+        <a class="btn sec" href="#method">See the method</a>
+      </div>
+      <p class="cta-note">Works in the browser. Readings stay on this device until you copy them out.</p>
+    </div>
+
+    <div class="pdfprev" aria-label="An example of the report the tool produces">
+      <div class="pdfprev-band"><span>Example output · PDF</span><span>Scroll to read ↓</span></div>
+      <div class="pdfprev-stage">
+        <div class="pdfpage">
+          <div class="pp-band"><span>Peer-review report</span><span>Major revision</span></div>
+          <div class="pp-title">Peer-review report</div>
+          <p class="pp-meta">MS-2026-0417 · Chen et al. · AI checklist run</p>
+          <div class="pp-sect">
+            <div class="pp-h"><span>Overall impression</span></div>
+            <p class="pp-p">A promising deep-learning model for early detection of pancreatic ductal adenocarcinoma, evaluated retrospectively on a single-centre cohort. The clinical question is relevant and the reporting is generally clear, but the evaluation design does not yet support the clinical claims made in the abstract.</p>
+          </div>
+          <div class="pp-sect">
+            <div class="pp-h" data-s="major"><span>Major concerns</span><span>Major</span></div>
+            <div class="pp-sub">Methods</div>
+            <div class="pp-line"><div class="pp-ref"><b>L87</b>Methods</div><div class="pp-txt">Train and test split appears to be by study, not by patient. If any patient contributes to both, the reported performance is inflated.<span class="mini" data-s="major">MAJ</span></div></div>
+            <div class="pp-line"><div class="pp-ref"><b>L118</b>Methods</div><div class="pp-txt">No sample-size justification is given for the test cohort. With 61 positive cases, the confidence interval around the reported AUC is too wide to support the claim of non-inferiority to radiologist reading.<span class="mini" data-s="major">MAJ</span></div></div>
+            <div class="pp-sub">Results</div>
+            <div class="pp-line"><div class="pp-ref"><b>L203</b>Results</div><div class="pp-txt">Point estimates are reported without confidence intervals throughout Table 2. Discrimination, calibration and clinical utility are three different claims; only the first is shown.<span class="mini" data-s="major">MAJ</span></div></div>
+          </div>
+          <div class="pp-foot"><span>iAIMS reviewing tool</span><span>Page 1 / 3</span></div>
+        </div>
+
+        <div class="pdfpage">
+          <div class="pp-sect" style="margin-top:2px">
+            <div class="pp-h" data-s="major"><span>Major concerns</span><span>Major</span></div>
+            <div class="pp-sub">Discussion</div>
+            <div class="pp-line"><div class="pp-ref"><b>L256</b>Discussion</div><div class="pp-txt">The discussion moves from a retrospective AUC to a bedside-benefit claim without external validation. The clinical claim outruns what was tested.<span class="mini" data-s="major">MAJ</span></div></div>
+          </div>
+          <div class="pp-sect">
+            <div class="pp-h" data-s="minor"><span>Minor points</span><span>Minor</span></div>
+            <div class="pp-sub">Introduction</div>
+            <div class="pp-line"><div class="pp-ref"><b>L31</b>Introduction</div><div class="pp-txt">Reference 12 is a preprint and is superseded by the 2024 published version.<span class="mini" data-s="minor">MIN</span></div></div>
+            <div class="pp-sub">Methods</div>
+            <div class="pp-line"><div class="pp-ref"><b>L142</b>Methods</div><div class="pp-txt">Scanner models are listed in the supplement but the protocol for harmonising acquisition parameters is not described.<span class="mini" data-s="minor">MIN</span></div></div>
+            <div class="pp-line"><div class="pp-ref"><b>L155</b>Methods</div><div class="pp-txt">Define “early detection” in the Methods — the term is used three different ways across the manuscript.<span class="mini" data-s="minor">MIN</span></div></div>
+            <div class="pp-sub">Results</div>
+            <div class="pp-line"><div class="pp-ref"><b>L214</b>Results</div><div class="pp-txt">Figure 3 legend omits the error-bar definition. State whether bars are SD or 95% CI.<span class="mini" data-s="minor">MIN</span></div></div>
+          </div>
+          <div class="pp-sect">
+            <div class="pp-h"><span>AI checklist checks passed</span></div>
+            <div class="pp-line"><div class="pp-ref"><b>T1</b>Passed</div><div class="pp-txt">Did they keep a proper held-out test set? — yes, patient-level split confirmed in supplement.</div></div>
+            <div class="pp-line"><div class="pp-ref"><b>T7</b>Passed</div><div class="pp-txt">Did they analyse failures, subgroups, and fairness? — subgroup results by sex and age provided.</div></div>
+          </div>
+          <div class="pp-foot"><span>iAIMS reviewing tool</span><span>Page 2 / 3</span></div>
+        </div>
+
+        <div class="pdfpage">
+          <div class="pp-sect" style="margin-top:2px">
+            <div class="pp-h"><span>Recommendation</span></div>
+            <div class="pp-recs">
+              <div class="pp-rec" data-checked="true"><b>Major revision</b>Substantive rework</div>
+            </div>
+          </div>
+          <div class="pp-foot"><span>iAIMS reviewing tool</span><span>Page 3 / 3</span></div>
+        </div>
+        <p class="pdfprev-cap">Illustrative example · the report your readings build, filed as a PDF</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="method">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="sec-title">Six stations. Two reads kept apart.</h2>
+      <p class="sec-note">Get to a final peer review report with six easy steps, of which two are optional. We guide you through so you can focus on the science.</p>
+    </div>
+    <div class="stations">
+      <div class="station">
+        <span class="station-n">01</span>
+        <h3 class="station-t">Invite</h3>
+        <p class="station-d">Ask yourself three easy questions to decide whether you should accept this peer review: expertise, conflicts of interest and time.</p>
+      </div>
+      <div class="station">
+        <span class="station-n">02</span>
+        <h3 class="station-t">First read</h3>
+        <p class="station-d">Read the manuscript entirely and jot down anything that comes to mind. Don't worry about nice wording, minor/major classification, or whether you will include it in the review letter eventually.</p>
+      </div>
+      <div class="station">
+        <span class="station-n">03</span>
+        <h3 class="station-t">Second read</h3>
+        <p class="station-d">Read the manuscript again after having detached from it (e.g. read it the next day). This phase is about filtering your initial notes, adding new ones, rewriting the ones you keep, and labelling them.</p>
+      </div>
+      <div class="station">
+        <span class="station-n">04</span>
+        <h3 class="station-t">AI Checklist</h3>
+        <p class="station-d">Are you reviewing a paper involving AI in healthcare? This optional step contains a list of questions, based on EQUATOR checklists, that aims to filter out major flaws in AI methodology and reporting.</p>
+        <span class="station-opt">Optional</span>
+      </div>
+      <div class="station">
+        <span class="station-n">05</span>
+        <h3 class="station-t">Report</h3>
+        <p class="station-d">View your entire report as it will appear as PDF. Make final adaptations, or choose for AI polishing in step 6.</p>
+      </div>
+      <div class="station">
+        <span class="station-n">06</span>
+        <h3 class="station-t">AI polishing</h3>
+        <p class="station-d">If you would like to have your text refined with the help of AI, you can provide your own model key or have us generate a prompt for you to copy into your favourite chat app.</p>
+        <span class="station-opt">Optional</span>
+      </div>
+      <div class="station" data-span="1">
+        <span class="glossmark">AI Glossary</span>
+        <h3 class="station-t">A term you don't know never stops the reading.</h3>
+        <p class="station-d">Every step carries an <b>AI Glossary</b> button — a searchable list of AI and research-ethics terms, from algorithmic bias to TRIPOD+AI, one click away whenever a word in the paper (or in your own head) needs defining.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="genai">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="sec-title">Generative AI: where we let it in.</h2>
+      <p class="sec-note">AI can sharpen how you say what you decided. It must never decide for you. Here is how this tool guides a reviewer through that maze — and exactly where the barrier is drawn.</p>
+    </div>
+    <div class="routes">
+      <div class="route">
+        <h3 class="route-t">Bring your own key</h3>
+        <p class="route-d">Paste the API base URL and key for a model you already use — OpenAI-compatible or Gemini-compatible endpoints. The tool fetches that endpoint's own model list and you pick one.</p>
+        <div class="route-spec">
+          <span>Request goes machine → endpoint</span>
+          <span>Key held in this browser, clearable in one click</span>
+          <span>Output previewed beside your draft before anything is applied</span>
+        </div>
+      </div>
+      <div class="route">
+        <h3 class="route-t">Copy a ready prompt out</h3>
+        <p class="route-d">Generate a complete prompt with your finished report already embedded, fenced and ruled. Paste it into whichever assistant you prefer, then paste the result back to compare against your draft.</p>
+        <div class="route-spec">
+          <span>No key, no endpoint, no account</span>
+          <span>Built locally and offline</span>
+          <span>Same side-by-side comparison when you paste the result back</span>
+        </div>
+      </div>
+    </div>
+    <div class="barrier">
+      <div class="barrier-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="#1F6B45" stroke-width="1.7">
+          <rect x="9" y="21" width="30" height="19"/>
+          <path d="M15 21v-6a9 9 0 0 1 18 0v6"/>
+          <path d="M24 28v5" stroke-width="2.2"/>
+          <circle cx="24" cy="27" r="1.6" fill="#1F6B45" stroke="none"/>
+        </svg>
+      </div>
+      <div>
+        <h3>The barrier is drawn where the manuscript ends.</h3>
+        <p>Peer review is conducted in confidence. Journals generally forbid sharing an unpublished manuscript with third parties, and that includes model providers. So this tool does not ask you to trust a privacy policy.</p>
+        <p><b>The polish step sees the draft report you would submit — nothing else.</b> That report is built from your readings, so your own wording travels inside it. What does not travel is the manuscript: the tool has no field for manuscript text, so it cannot send what it has never held. The only manuscript-derived string in a request is the identifier you typed into the report header yourself.</p>
+        <p>If the journal's rules leave no room for even that, take the copy-out route instead. It builds the prompt locally and sends nothing at all.</p>
+        <p>Verify it yourself: the request is made from your own browser, and the developer tools will show you exactly what was in it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>© iAIMS · ReHPAI reviewing companion. ReHPAI is this project's own method name.</p>
+    <div class="fnav">
+      <a href="index.html">Start a review →</a>
+      <a href="#method">Method</a>
+      <a href="#genai">Generative AI</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  "use strict";
+  // local device counters (shared with the tool's stats view)
+  try {
+    const K = "iaims-stats-v1";
+    const st = JSON.parse(localStorage.getItem(K) || "{}");
+    st.visits = (st.visits || 0) + 1;
+    st.first = st.first || Date.now();
+    st.last = Date.now();
+    localStorage.setItem(K, JSON.stringify(st));
+  } catch (e) {}
+  // one authored motion: the example report's pages arrive as you reach them
+  const pages = [...document.querySelectorAll('.pdfpage')];
+  if (!pages.length) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    pages.forEach(p => p.classList.add('seen'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const i = pages.indexOf(e.target);
+      setTimeout(() => e.target.classList.add('seen'), Math.max(0, i) * 200);
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.2 });
+  pages.forEach(p => io.observe(p));
+})();
+</script>
+</body>
+</html>

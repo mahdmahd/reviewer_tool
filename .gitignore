@@ -1,0 +1,18 @@
+# Claude-generated docs — never publish
+*.md
+
+# Local artifacts
+*.artifact.json
+landing-desktop.png
+ruvector.db
+
+# Local tooling / infra — never publish
+deploy/
+Dockerfile
+.omc/
+.swarm/
+.claude-flow/
+.playwright-mcp/
+.impeccable/
+.file-versions/
+.od-skills/
