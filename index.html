@@ -645,7 +645,8 @@ const STEPS=[
  {n:5,k:"05",label:"Report",desc:"View your entire report as it will appear as PDF. Make final adaptations, or choose for AI polishing in step 6."},
  {n:6,k:"06",label:"AI polishing",optional:true,desc:"If you would like to have your text refined with the help of AI, provide your own model key — or generate a prompt for you to copy into your favourite chat app."}
 ];
-const SECTIONS=["Introduction","Methods","Results","Discussion","General"];
+const SECTIONS=["Introduction","Methods","Results","Discussion"];
+const LEGACY_SECTIONS=["Introduction","Methods","Results","Discussion","General"];
 const PRE_TAGS=[
  {name:"typo",sev:"minor"},{name:"grammar / language",sev:"minor"},{name:"formatting",sev:"minor"},
  {name:"reference style",sev:"minor"},{name:"figure / table clarity",sev:"minor"},
@@ -697,7 +698,7 @@ const GLOSSARY=[
 ];
 
 const base=()=>({step:1,ms:"",
- invite:{expert:"",conflict:"",time:"",decision:"",note:""},
+ invite:{expert:"",conflict:"",time:"",decision:""},
  notes:[],customTags:[],
  sections:SECTIONS.slice(),
  ai:{on:null,ans:{}},
@@ -706,6 +707,8 @@ const base=()=>({step:1,ms:"",
 let S=base();
 try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);S=Object.assign(base(),p);S.invite=Object.assign(base().invite,p.invite||{});S.ai=Object.assign({on:null,ans:{}},p.ai||{});S.report=Object.assign({intro:"",letter:""},p.report||{});S.polish=Object.assign(base().polish,p.polish||{});}}catch(e){}
 if(!Array.isArray(S.sections)||!S.sections.length)S.sections=SECTIONS.slice();
+/* migrate legacy default sections (General no longer a default paper section) */
+if(Array.isArray(S.sections)&&S.sections.join("|")===LEGACY_SECTIONS.join("|"))S.sections=SECTIONS.slice();
 /* migrate legacy invite keys (ex/cf/tm were written but never read) */
 if(S.invite.ex){if(!S.invite.expert)S.invite.expert=S.invite.ex;delete S.invite.ex;}
 if(S.invite.cf){if(!S.invite.conflict)S.invite.conflict=S.invite.cf;delete S.invite.cf;}
@@ -797,6 +800,7 @@ function render(){
   $("#btn-prev").style.visibility=S.step===1?"hidden":"visible";
   /* Continue only appears on the invite once the reviewer has accepted */
   $("#btn-next").style.display=(S.step===1&&S.invite.decision!=="accept")?"none":"";
+  $("#btn-next").className=(S.step===1&&S.invite.decision==="accept")?"btn":"btn sm";
   $("#btn-next").textContent=S.step===6?"Done":"Continue → "+STEPS[Math.min(5,S.step)].label;
 }
 function head(n,extra){
@@ -807,9 +811,6 @@ function head(n,extra){
 }
 
 /* ---- 01 invite ---- */
-const INV_NOTE={
- extension:"Thank you for the invitation. I would be glad to review this manuscript, but I cannot meet the current deadline — please contact the journal as soon as possible so we can agree a new date.",
- decline:"Thank you for the invitation. Unfortunately I must decline this review — please contact the journal as soon as possible to find a reviewer with the right expertise."};
 function vInvite(){
   const q=(name,label,opts,cur)=>'<div style="margin-bottom:18px"><span style="font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:7px">'+esc(label)+'</span><div class="tagset" role="radiogroup" aria-label="'+esc(label)+'">'+
     opts.map(o=>'<button type="button" class="tag" role="radio" aria-checked="'+(cur===o.v)+'" data-radio="'+name+'" data-val="'+o.v+'">'+esc(o.t)+'</button>').join("")+'</div></div>';
@@ -826,10 +827,14 @@ function vInvite(){
       '<span class="rec-t">'+r[1]+'</span><span class="rec-d">'+r[2]+'</span></label>').join("")+
     '</div></div>'+
     (S.invite.decision==="decline"||S.invite.decision==="extension"?
-      '<div style="margin-top:18px;border-top:1px solid var(--rule);padding-top:18px">'+
-      '<div class="f" style="margin-bottom:8px"><label for="inote">Notes for the editor</label>'+
-      '<textarea class="inp" id="inote" rows="3" spellcheck="true" placeholder="A suggested text is filled in — edit it as you like.">'+esc(S.invite.note||"")+'</textarea></div>'+
-      '<p class="meta" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-2);margin:0">Please contact the journal as soon as possible.</p></div>'
+      '<div style="margin-top:18px;border:1px solid var(--rule-strong);background:var(--paper-2);padding:14px 16px">'+
+      '<p style="font-family:var(--f-mono);font-size:12px;letter-spacing:.02em;color:var(--ink);margin:0">Please contact the journal as soon as possible.</p></div>'
+     :"")+
+    (S.invite.decision==="accept"?
+      '<div id="accept-cta" style="margin-top:18px;border:1px solid var(--rule-strong);background:var(--card);padding:18px;display:flex;flex-wrap:wrap;align-items:center;gap:16px;justify-content:space-between">'+
+      '<div><div style="font-family:var(--f-display);font-size:19px;font-weight:700;letter-spacing:-.015em;line-height:1.2">Accepted — next: the first read</div>'+
+      '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-top:6px">Read the manuscript once · jot everything down</div></div>'+
+      '<button type="button" class="btn" id="cta-read" style="font-size:15px;padding:14px 24px">Continue → First read</button></div>'
      :"")+
   '</div>'+
   '<p class="meta" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-top:16px">Only accept work squarely in your field. If in doubt, decline or ask for more time.</p>';
@@ -882,14 +887,14 @@ function vRead(){
   return head(2)+
   '<div class="capture">'+
    secEditor()+
-   '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px">Capture a reading</div>'+
+   '<div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px">Capture a comment</div>'+
    '<div class="capture-row">'+
      '<div class="f"><label for="nl">Line</label><input class="inp" id="nl" type="number" min="1" placeholder="42" inputmode="numeric"></div>'+
      '<div class="f"><label for="ns">Section</label><select class="inp" id="ns">'+secs.map(s=>'<option>'+esc(s)+'</option>').join("")+'</select></div>'+
    '</div>'+
    '<div class="capture-row full"><div class="f"><label for="nt">Observation</label>'+
      '<textarea class="inp" id="nt" rows="3" placeholder="What did you notice at this line? Leave Line empty for a general remark — it will be labelled General."></textarea></div></div>'+
-   '<button type="button" class="btn" id="addN1">Add reading</button> '+
+   '<button type="button" class="btn" id="addN1">Add comment</button> '+
    '<span class="meta" style="font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-left:10px">No severity yet — that is the second read.</span>'+
   '</div>'+
   '<div class="strip">'+
@@ -949,7 +954,7 @@ function vTriage(){
      '<div class="f"><label for="n2s">Section</label><select class="inp" id="n2s">'+sectionsList().map(s=>'<option>'+esc(s)+'</option>').join("")+'</select></div>'+
    '</div>'+
    '<div class="capture-row full"><div class="f"><label for="n2t">Observation</label><textarea class="inp" id="n2t" rows="2"></textarea></div></div>'+
-   '<button type="button" class="btn sec sm" id="addN2">Add reading</button>'+
+   '<button type="button" class="btn sec sm" id="addN2">Add comment</button>'+
   '</div>'+
   (S.notes.length?[...S.notes].sort((a,b)=>(parseInt(a.line)||99999)-(parseInt(b.line)||99999)).map(n=>{
     const s=sevOf(n);
@@ -1014,7 +1019,9 @@ function groups(){
   live().forEach(n=>{
     const s=sevOf(n);
     let sec=n.section||"General";
-    if(!Object.prototype.hasOwnProperty.call(g.major,sec))sec=secs.includes("General")?"General":secs[0];
+    /* keep notes whose section is no longer in the paper-sections list
+       under their own bucket (e.g. legacy "General") instead of misfiling */
+    if(!Object.prototype.hasOwnProperty.call(g.major,sec)){g.major[sec]=[];g.minor[sec]=[];}
     if(s==="major")g.major[sec].push(n);
     else if(s==="minor")g.minor[sec].push(n);
     else un.push(n);
@@ -1036,7 +1043,10 @@ function vReport(){
     '</div><span></span></div></div>';
   const block=(title,sev,obj)=>{
     let s='<div class="rsect"><div class="rsect-h" data-s="'+sev+'"><span>'+title+'</span><span>'+sev.toUpperCase()+'</span></div>';
-    sectionsList().forEach(sec=>{
+    const listed=sectionsList();
+    /* paper sections first, then any leftover buckets (e.g. legacy General) */
+    const order=listed.concat(Object.keys(obj).filter(x=>!listed.includes(x)));
+    order.forEach(sec=>{
       const arr=obj[sec]||[],ai=aiConcerns(sev).filter(x=>(x.t.sec||"Methods")===sec);
       if(!arr.length&&!ai.length)return;
       s+='<p class="rsub">'+esc(sec)+'</p>';
@@ -1229,14 +1239,9 @@ function wire(){
   Q('[data-radio]').forEach(b=>b.addEventListener("click",()=>{
     S.invite[b.getAttribute("data-radio")]=b.getAttribute("data-val");save();render();}));
   Q('input[name="dec"]').forEach(r=>r.addEventListener("change",()=>{
-    S.invite.decision=r.value;
-    const suggestions=Object.values(INV_NOTE);
-    if(r.value==="extension"||r.value==="decline"){
-      if(!S.invite.note||suggestions.includes(S.invite.note))S.invite.note=INV_NOTE[r.value];
-    }else if(suggestions.includes(S.invite.note)){S.invite.note="";}
-    save();render();}));
-  const inote=F.querySelector("#inote");
-  if(inote)inote.addEventListener("input",()=>{S.invite.note=inote.value;save();});
+    S.invite.decision=r.value;save();render();}));
+  const cta=F.querySelector("#cta-read");
+  if(cta)cta.addEventListener("click",()=>go(2));
   Q('input[name="rec"]').forEach(r=>r.addEventListener("change",()=>{S.rec=r.value;save();render();}));
   Q('input[name="aiOn"]').forEach(r=>r.addEventListener("change",()=>{S.ai.on=(r.value==="yes");
     if(r.value==="yes")hitEvent("checklist","checklist_run");
@@ -1534,12 +1539,36 @@ function saveTxt(){
     openModal("Could not save","The text file could not be generated in this browser. Use Copy report instead.","OK",closeModal);
   }
 }
-function savePdf(){
+/* ---- PDF fonts: embed Geist / Geist Mono so the export matches the design
+   and renders in every viewer (base-14 fonts are missing on many systems) ---- */
+const PDF_FONTS=["Geist-Regular.ttf","Geist-Bold.ttf","GeistMono-Regular.ttf","GeistMono-Bold.ttf"];
+let pdfFontBins=null,pdfFontsPromise=null;
+function preloadPdfFonts(){
+  if(pdfFontsPromise)return pdfFontsPromise;
+  pdfFontsPromise=Promise.all(PDF_FONTS.map(async f=>{
+    const r=await fetch("assets/pdf-fonts/"+f);if(!r.ok)throw new Error(f);
+    const b=new Uint8Array(await r.arrayBuffer());let s="";
+    for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));
+    return [f,s];
+  })).then(pairs=>{pdfFontBins=Object.fromEntries(pairs);return pdfFontBins;})
+    .catch(()=>{pdfFontBins=null;return null;});
+  return pdfFontsPromise;
+}
+preloadPdfFonts();
+async function savePdf(){
   if(!window.jspdf||!window.jspdf.jsPDF){
     openModal("PDF library missing","The PDF library did not load (assets/jspdf.umd.min.js). Use Copy report or Save as TXT meanwhile.","OK",closeModal);return;}
   try{
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:"mm",format:"a4"});
+  /* register the embedded faces over the base-14 names the layout code uses */
+  await preloadPdfFonts();
+  if(pdfFontBins){
+    [["Geist-Regular.ttf","helvetica","normal"],["Geist-Bold.ttf","helvetica","bold"],
+     ["Geist-Regular.ttf","helvetica","italic"],["GeistMono-Regular.ttf","courier","normal"],
+     ["GeistMono-Bold.ttf","courier","bold"]].forEach(([f,fam,sty])=>{
+      try{doc.addFileToVFS(f,pdfFontBins[f]);doc.addFont(f,fam,sty);}catch(e){}});
+  }
   const W=210,H=297,ML=12,MR=12,MT=14,MB=14,CW=W-ML-MR;
   const C={ultra:[27,47,208],ink:[20,23,26],ink2:[67,71,76],ink3:[107,112,117],
     rule:[211,214,208],hair:[227,229,224],paper2:[235,235,230],
@@ -1653,7 +1682,7 @@ function savePdf(){
     doc.setFont("helvetica","normal");doc.setFontSize(9.5);setF(C.ink);
     doc.splitTextToSize(S.report.intro,CW).forEach(ln=>{need(4.5);doc.text(ln,ML,y);y+=4.3;});
   }else{
-    doc.setFont("helvetica","italic");doc.setFontSize(9.5);setF(C.ink3);
+    doc.setFont("helvetica","normal");doc.setFontSize(9.5);setF(C.ink3);
     doc.text("No overall impression written.",ML,y);y+=5;
   }
   y+=4;
@@ -1674,7 +1703,7 @@ function savePdf(){
   if(aiOn()&&ps.length){
     sectHead("AI checklist checks passed",null);
     ps.forEach(t=>{
-      const ls=doc.splitTextToSize("✓ "+(t.code||t.id)+" — "+t.q,CW-4);
+      const ls=doc.splitTextToSize("PASS  "+(t.code||t.id)+" — "+t.q,CW-4);
       ls.forEach(ln=>{need(4.4);doc.setFont("courier","normal");doc.setFontSize(8);setF(C.ok);doc.text(ln,ML+2,y);y+=4.0;});
     });
     y+=4;
